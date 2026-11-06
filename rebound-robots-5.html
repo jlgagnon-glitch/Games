@@ -1,0 +1,1162 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Rebound Robots 5</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: board-first game table. Square board on the left, a tall control rail on the right; stacks on phones. */
+:root {
+  --bg: #e4e7ec;
+  --panel: #f5f6f8;
+  --fg: #171b26;
+  --muted: #5a6273;
+  --line: #c6ccd6;
+  --board: #b9c0cc;
+  --tile: #dfe3ea;
+  --tile-hi: #eceff3;
+  --center: #2a3040;
+  --wall: #1a1e29;
+  --r0: #d6313a;
+  --r1: #23955a;
+  --r2: #2865d6;
+  --r3: #e2a90f;
+  --r4: #7f8a9b;
+  --focus: #2865d6;
+  --warn: #c2410c;
+  --font-display: "Bungee", "Arial Black", Impact, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141b; --panel: #1a1e28; --fg: #e8ebf1; --muted: #9aa2b2; --line: #2f3646;
+    --board: #0b0d12; --tile: #232936; --tile-hi: #2b3241; --center: #3a4256; --wall: #e3e7ef;
+    --r0: #ef4b52; --r1: #35b872; --r2: #4c86f0; --r3: #f2c033; --r4: #c9d0dc; --focus: #7aa6ff; --warn: #fb923c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11141b; --panel: #1a1e28; --fg: #e8ebf1; --muted: #9aa2b2; --line: #2f3646;
+  --board: #0b0d12; --tile: #232936; --tile-hi: #2b3241; --center: #3a4256; --wall: #e3e7ef;
+  --r0: #ef4b52; --r1: #35b872; --r2: #4c86f0; --r3: #f2c033; --r4: #c9d0dc; --focus: #7aa6ff; --warn: #fb923c;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; } /* hidden overlays must never cover the board, even outside the viewer */
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.app {
+  max-width: 1200px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 3.2vw, 30px); letter-spacing: .02em; line-height: 1; display: flex; align-items: center; gap: .45em; }
+h1 .dots { display: inline-flex; gap: 4px; }
+h1 .dots i { width: .42em; height: .42em; border-radius: 50%; display: block; }
+.hdr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 700 13px var(--font-body); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.btn { font: 700 13.5px var(--font-body); color: var(--fg); background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .42; cursor: default; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn.ghost { background: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; }
+kbd { font: 700 11px var(--font-body); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--panel); }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+@media (max-width: 880px) { main { grid-template-columns: minmax(0, 1fr); } }
+.board-wrap { position: relative; display: flex; justify-content: center; min-width: 0; }
+#board { display: block; border-radius: 14px; touch-action: none; cursor: pointer; box-shadow: 0 10px 30px -14px rgba(0,0,0,.45); }
+.toast { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -6px); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.target { display: flex; gap: 14px; align-items: center; }
+#chip { width: 64px; height: 64px; flex: none; border-radius: 12px; background: var(--center); }
+.tname { font-family: var(--font-display); font-size: 19px; line-height: 1.1; margin-top: 3px; }
+.tsub { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.big { font-family: var(--font-display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+.big small { font-family: var(--font-body); font-size: 13px; color: var(--muted); font-weight: 700; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--focus); font: 700 12.5px var(--font-body); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; align-self: flex-start; }
+.picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.picker button { border: 1.5px solid var(--line); background: var(--panel); border-radius: 10px; padding: 7px 4px; cursor: pointer; color: var(--fg); font: 700 12px var(--font-body); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.picker button i { width: 18px; height: 18px; border-radius: 50%; display: block; box-shadow: inset 0 -3px 0 rgba(0,0,0,.22); }
+.picker button[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 1.5px var(--fg); }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.controls .wide { grid-column: 1 / -1; }
+.score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.score .big { font-size: 24px; }
+.log { display: flex; flex-wrap: wrap; gap: 5px; }
+.log span { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1.5px solid var(--line); font-variant-numeric: tabular-nums; }
+.log span.opt { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.log span.miss { color: var(--muted); border-style: dashed; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.hint strong { color: var(--fg); }
+
+/* saved records */
+.records { display: flex; flex-direction: column; gap: 8px; border-top: 1.5px solid var(--line); padding-top: 12px; }
+.records .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.records .score .big { font-size: 20px; }
+.records .best { font-size: 13.5px; font-weight: 700; }
+.rlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rlist li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 8px; border: 1.5px solid var(--line); }
+.rlist li.top { border-color: var(--fg); }
+.rlist li span:first-child { color: var(--muted); }
+.pb { font-weight: 700; }
+
+/* party */
+.timer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#timerText { font-family: var(--font-display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+#timerText.low { color: var(--warn); }
+.tbar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.tbar > div { height: 100%; background: var(--fg); width: 100%; transition: width .2s linear; }
+.players { display: flex; flex-direction: column; gap: 6px; }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: center; padding: 6px 6px 6px 8px; border: 1.5px solid var(--line); border-radius: 10px; }
+.prow.active { border-color: var(--fg); box-shadow: 0 0 0 1.5px var(--fg); }
+.prow input.name { min-width: 0; width: 100%; border: 0; background: transparent; color: var(--fg); font: 700 14px var(--font-body); padding: 4px 2px; border-radius: 6px; }
+.prow input.bid { width: 3.6em; font: 700 14px var(--font-body); color: var(--fg); background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 5px 6px; text-align: center; }
+.tokens { font-weight: 700; font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bidtag { font-family: var(--font-display); font-size: 16px; min-width: 1.6em; text-align: center; }
+.prow .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 4px; }
+.prow .btn { padding: 6px 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+select { font: 700 13px var(--font-body); color: var(--fg); background: var(--panel); border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.status { font-weight: 700; font-size: 14.5px; }
+
+/* overlays */
+.overlay { position: fixed; inset: 0; background: rgba(8,10,16,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.sheet { background: var(--panel); color: var(--fg); border-radius: 16px; max-width: 560px; width: 100%; max-height: calc(100% - 32px); overflow: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; border: 1.5px solid var(--line); }
+.sheet h2 { font-family: var(--font-display); font-weight: 400; margin: 0; font-size: 22px; text-wrap: balance; }
+.sheet p, .sheet li { margin: 0; max-width: 62ch; }
+.sheet ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+.standings { display: flex; flex-direction: column; gap: 6px; }
+.standings div { display: flex; justify-content: space-between; font-weight: 700; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .toast, .tbar > div { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1><span class="dots"><i style="background:var(--r0)"></i><i style="background:var(--r1)"></i><i style="background:var(--r2)"></i><i style="background:var(--r3)"></i><i style="background:var(--r4)"></i></span>Rebound Robots 5</h1>
+    <div class="hdr">
+      <div class="seg" role="group" aria-label="Game mode">
+        <button id="modeSolo" aria-pressed="true">Solo</button>
+        <button id="modeParty" aria-pressed="false">Party</button>
+      </div>
+      <button class="btn ghost" id="btnHelp">How to play</button>
+      <button class="btn ghost" id="btnSound" aria-pressed="false">Sound off</button>
+      <button class="btn" id="btnNew">New board</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="board-wrap" id="boardWrap">
+      <canvas id="board" tabindex="0" aria-label="Game board. Select a robot with keys 1 to 5, move it with the arrow keys."></canvas>
+      <div class="toast" id="toast" role="status"></div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <div class="target">
+          <canvas id="chip" width="128" height="128"></canvas>
+          <div>
+            <div class="eyebrow" id="roundLabel">Target 1 of 17</div>
+            <div class="tname" id="targetName">Red moon</div>
+            <div class="tsub" id="targetSub">Get the red robot onto it.</div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="eyebrow">Moves</div>
+            <div class="big"><span id="moves">0</span><small id="movesOf"></small></div>
+          </div>
+          <div class="stat">
+            <div class="eyebrow">Fewest possible</div>
+            <div class="big" id="opt">?</div>
+            <button class="linkbtn" id="btnPeek">Reveal count</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Robot <span style="text-transform:none;letter-spacing:0;font-weight:400">· tap a robot, then swipe or tap a square in line</span></div>
+        <div class="picker" id="picker"></div>
+        <div class="controls">
+          <button class="btn" id="btnUndo">Undo <kbd>Z</kbd></button>
+          <button class="btn" id="btnReset">Reset round</button>
+          <button class="btn" id="btnSolution">Show solution</button>
+          <button class="btn primary" id="btnNext">Next target</button>
+        </div>
+      </div>
+
+      <div class="card" id="soloPanel">
+        <div class="eyebrow">Solo score</div>
+        <div class="score">
+          <div class="stat"><div class="eyebrow">Solved</div><div class="big" id="sSolved">0</div></div>
+          <div class="stat"><div class="eyebrow">Optimal</div><div class="big" id="sOpt">0</div></div>
+          <div class="stat"><div class="eyebrow">Extra moves</div><div class="big" id="sExtra">0</div></div>
+        </div>
+        <div class="log" id="sLog"></div>
+        <p class="hint" id="soloHint">Robots slide until they hit a wall or another robot. Reach the target in as few moves as you can, then press <strong>Next target</strong>. Robots stay where they finish.</p>
+        <div class="records" id="records"></div>
+      </div>
+
+      <div class="card" id="partyPanel" hidden>
+        <div class="timer">
+          <div>
+            <div class="eyebrow">Sand timer</div>
+            <div id="timerText">1:00</div>
+          </div>
+          <div class="row">
+            <label class="sr" for="timerLen">Timer length</label>
+            <select id="timerLen">
+              <option value="30">30 s</option>
+              <option value="60" selected>60 s</option>
+              <option value="90">90 s</option>
+              <option value="120">2 min</option>
+            </select>
+            <button class="btn" id="btnEndTimer">End timer</button>
+          </div>
+        </div>
+        <div class="tbar"><div id="timerBar"></div></div>
+        <div class="status" id="partyStatus"></div>
+        <div class="players" id="players"></div>
+        <div class="row">
+          <button class="btn" id="btnAddPlayer">Add player</button>
+          <button class="btn" id="btnGiveUp" hidden>Give up</button>
+          <button class="btn" id="btnSkip">Nobody sees it</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="overlay" id="help" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <h2 id="helpTitle">How to play</h2>
+    <ul>
+      <li>Each round flips one target. Get the robot of that color onto it. The swirling vortex target accepts any colored robot.</li>
+      <li>The <strong>silver robot</strong> never has a target of its own, and it can't claim the vortex. It is there only to block: move it so other robots bounce off it. Its moves count like any other.</li>
+      <li>A robot moves in a straight line and keeps sliding until it hits a wall or another robot. It cannot stop partway.</li>
+      <li>Every robot counts toward your move total, so use the others as blockers.</li>
+      <li>Robots stay where they land, so each round starts from the last round's finish.</li>
+      <li><strong>Solo:</strong> solve each target and compare with the fewest moves possible, found by a built-in solver.</li>
+      <li><strong>Party:</strong> pass-and-play for a group around one screen. Robots are locked while everyone studies the board. The first bid starts the sand timer, and anyone may bid until it runs out. The lowest bid demonstrates first (ties go to whoever bid first). Reach the target within your bid to win the chip. Fail and the next lowest bidder tries.</li>
+      <li>Keys: <kbd>1</kbd>–<kbd>5</kbd> or <kbd>R</kbd> <kbd>G</kbd> <kbd>B</kbd> <kbd>Y</kbd> <kbd>S</kbd> pick a robot, arrows move it, <kbd>Z</kbd> undoes, <kbd>Esc</kbd> resets the round, <kbd>N</kbd> is next target.</li>
+      <li>All 17 targets make a full game. Each board is randomly built the way the real one is: an L-shaped wall at every target and two edge walls per quarter.</li>
+      <li>Your game in progress and every finished Solo game are saved in this browser, so you can close the page and pick up later. They stay on this device only, separate from the four-robot game.</li>
+    </ul>
+    <div class="row"><button class="btn primary" id="btnHelpClose">Got it</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+    <h2 id="overTitle">Game over</h2>
+    <div id="overBody"></div>
+    <div class="row"><button class="btn primary" id="btnOverNew">New board</button><button class="btn" id="btnOverClose">Look at the board</button></div>
+  </div>
+</div>
+
+<script type="text/plain" id="solverSrc">
+const BIT = [1, 2, 4, 8], DELTA = [-16, 1, 16, -1];
+const BITS = 23, SIZE = 1 << BITS, MASK = SIZE - 1, MAXN = 6000000, HI = 4294967296;
+let keys = null, parents = null;
+onmessage = function (e) {
+  const { id, walls, robots, target, goal } = e.data;
+  const W = Uint8Array.from(walls);
+  if (!keys) { keys = new Float64Array(SIZE); parents = new Uint32Array(SIZE); } else keys.fill(0);
+  // A state packs five 8-bit cells into one 40-bit number, which a double holds exactly.
+  function slot(k) {
+    const lo = k >>> 0, hi = (k - lo) / HI;
+    let h = Math.imul(lo ^ Math.imul(hi, 0x85EBCA6B), 0x9E3779B1) >>> (32 - BITS);
+    for (;;) { const v = keys[h]; if (v === 0 || v === k) return h; h = (h + 1) & MASK; }
+  }
+  // Helper robots are interchangeable blockers, so sort them to shrink the search space.
+  // Vortex: the four colored robots sort together and silver stays last.
+  // Colored target: the goal robot stays first and the other four (silver included) sort together.
+  function enc(p0, p1, p2, p3, p4) {
+    let t;
+    if (goal < 0) {
+      if (p0 > p1) { t = p0; p0 = p1; p1 = t; } if (p2 > p3) { t = p2; p2 = p3; p3 = t; }
+      if (p0 > p2) { t = p0; p0 = p2; p2 = t; } if (p1 > p3) { t = p1; p1 = p3; p3 = t; }
+      if (p1 > p2) { t = p1; p1 = p2; p2 = t; }
+    } else {
+      if (p1 > p2) { t = p1; p1 = p2; p2 = t; } if (p3 > p4) { t = p3; p3 = p4; p4 = t; }
+      if (p1 > p3) { t = p1; p1 = p3; p3 = t; } if (p2 > p4) { t = p2; p2 = p4; p4 = t; }
+      if (p2 > p3) { t = p2; p2 = p3; p3 = t; }
+    }
+    return ((p0 | (p1 << 8) | (p2 << 16) | (p3 << 24)) >>> 0) + p4 * HI;
+  }
+  function encReal(r) {
+    if (goal < 0) return enc(r[0], r[1], r[2], r[3], r[4]);
+    const o = [0, 1, 2, 3, 4].filter(i => i !== goal).map(i => r[i]);
+    return enc(r[goal], o[0], o[1], o[2], o[3]);
+  }
+  function slide(r, i, d) {
+    let c = r[i];
+    while (!(W[c] & BIT[d])) { const n = c + DELTA[d]; if (n === r[0] || n === r[1] || n === r[2] || n === r[3] || n === r[4]) break; c = n; }
+    return c;
+  }
+  const startK = encReal(robots), startS = slot(startK);
+  keys[startS] = startK;
+  let count = 1, found = -1, depth = 0, frontier = [startS];
+  const q = [0, 0, 0, 0, 0];
+  outer: while (frontier.length && depth < 40) {
+    const next = [];
+    for (let fi = 0; fi < frontier.length; fi++) {
+      const ps = frontier[fi], k = keys[ps], lo = k >>> 0;
+      const s0 = lo & 255, s1 = (lo >>> 8) & 255, s2 = (lo >>> 16) & 255, s3 = lo >>> 24, s4 = (k - lo) / HI;
+      for (let i = 0; i < 5; i++) {
+        for (let d = 0; d < 4; d++) {
+          q[0] = s0; q[1] = s1; q[2] = s2; q[3] = s3; q[4] = s4;
+          let c = q[i]; const dl = DELTA[d], b = BIT[d];
+          while (!(W[c] & b)) { const n = c + dl; if (n === s0 || n === s1 || n === s2 || n === s3 || n === s4) break; c = n; }
+          if (c === q[i]) continue;
+          q[i] = c;
+          const nk = enc(q[0], q[1], q[2], q[3], q[4]);
+          const hs = slot(nk);
+          if (keys[hs] !== 0) continue;
+          keys[hs] = nk; parents[hs] = ps; count++;
+          if (c === target && (goal < 0 ? i < 4 : i === 0)) { found = hs; break outer; }
+          next.push(hs);
+        }
+      }
+      if (count > MAXN) { postMessage({ id, moves: null, states: count }); return; }
+    }
+    frontier = next; depth++;
+  }
+  if (found < 0) { postMessage({ id, moves: null, states: count }); return; }
+  const path = [found];
+  while (path[0] !== startS) path.unshift(parents[path[0]]);
+  const cur = robots.slice(), moves = [];
+  for (let j = 1; j < path.length; j++) {
+    let ok = false;
+    for (let i = 0; i < 5 && !ok; i++) for (let d = 0; d < 4 && !ok; d++) {
+      const np = slide(cur, i, d);
+      if (np === cur[i]) continue;
+      const t = cur.slice(); t[i] = np;
+      if (encReal(t) === keys[path[j]]) { cur[i] = np; moves.push([i, d]); ok = true; }
+    }
+  }
+  postMessage({ id, moves, states: count });
+};
+</script>
+
+<script>
+(() => {
+const BIT = [1, 2, 4, 8], DELTA = [-16, 1, 16, -1], OPP = [2, 3, 0, 1];
+const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+const COLOR_NAMES = ['Red', 'Green', 'Blue', 'Yellow', 'Silver'];
+const NR = 5, SILVER = 4; // silver only blocks: it has no target and can't claim the vortex
+const SHAPE_NAMES = ['moon', 'star', 'gear', 'planet'];
+const CENTER = [119, 120, 135, 136];
+const isCenter = c => CENTER.includes(c);
+const $ = s => document.querySelector(s);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- board generation ---------- */
+function addWall(w, cell, d) {
+  w[cell] |= BIT[d];
+  const r = (cell >> 4) + DR[d], c = (cell & 15) + DC[d];
+  if (r >= 0 && r < 16 && c >= 0 && c < 16) w[r * 16 + c] |= BIT[OPP[d]];
+}
+function generateBoard() {
+  for (;;) {
+    const walls = new Uint8Array(256);
+    for (let i = 0; i < 16; i++) { walls[i] |= 1; walls[240 + i] |= 4; walls[i * 16] |= 8; walls[i * 16 + 15] |= 2; }
+    for (const c of CENTER) for (let d = 0; d < 4; d++) addWall(walls, c, d);
+    const perm = shuffle([0, 1, 2, 3]), qperm = shuffle([0, 1, 2, 3]);
+    const vortexQ = rnd(4), targets = [];
+    let ok = true;
+    for (let q = 0; q < 4 && ok; q++) {
+      const qr = (q >> 1) * 8, qc = (q & 1) * 8;
+      // each quarter holds one target of every color, shapes arranged as a Latin square
+      const list = [0, 1, 2, 3].map(k => ({ color: k, shape: perm[(qperm[q] + k) % 4] }));
+      if (q === vortexQ) list.push({ color: -1, shape: -1 });
+      const cand = [];
+      for (let r = 1; r <= 6; r++) for (let c = 1; c <= 6; c++) {
+        const ar = qr + r, ac = qc + c;
+        if (ar >= 6 && ar <= 9 && ac >= 6 && ac <= 9) continue;
+        cand.push(ar * 16 + ac);
+      }
+      shuffle(cand);
+      for (const t of list) {
+        const cell = cand.find(c => targets.every(o => Math.max(Math.abs((o.cell >> 4) - (c >> 4)), Math.abs((o.cell & 15) - (c & 15))) >= 2));
+        if (cell === undefined) { ok = false; break; }
+        const corner = rnd(4);
+        addWall(walls, cell, corner); addWall(walls, cell, (corner + 1) % 4);
+        targets.push({ cell, color: t.color, shape: t.shape });
+      }
+      const hr = qr === 0 ? 0 : 15; addWall(walls, hr * 16 + qc + 1 + rnd(5), 1);
+      const vc = qc === 0 ? 0 : 15; addWall(walls, (qr + 1 + rnd(5)) * 16 + vc, 2);
+    }
+    if (ok) return { walls, targets };
+  }
+}
+function placeRobots(targets) {
+  const used = new Set(targets.map(t => t.cell)), r = [];
+  while (r.length < NR) { const c = rnd(256); if (!isCenter(c) && !used.has(c) && !r.includes(c)) r.push(c); }
+  return r;
+}
+function slide(walls, robots, i, d) {
+  let c = robots[i];
+  while (!(walls[c] & BIT[d])) { const n = c + DELTA[d]; if (robots.includes(n)) break; c = n; }
+  return c;
+}
+
+/* ---------- state ---------- */
+let G = null;
+let P = { players: [{ name: 'Player 1', tokens: 0 }, { name: 'Player 2', tokens: 0 }], duration: 60 };
+try { const s = JSON.parse(localStorage.getItem('rr5-players') || 'null'); if (Array.isArray(s) && s.length) P.players = s.map(n => ({ name: String(n).slice(0, 24), tokens: 0 })); } catch (e) {}
+const savePlayers = () => { try { localStorage.setItem('rr5-players', JSON.stringify(P.players.map(p => p.name))); } catch (e) {} saveGame(); };
+
+/* ---------- saved scores (this browser only) ---------- */
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+};
+let records = store.get('rr5-records', []);
+if (!Array.isArray(records)) records = [];
+const snapshot = () => ({ G: G && { ...G, walls: Array.from(G.walls) }, P, mode });
+let saveT = null;
+function saveGame() { clearTimeout(saveT); saveT = setTimeout(() => store.set('rr5-game', snapshot()), 300); }
+function soloSummary(log) {
+  const done = log.filter(l => l.best != null);
+  return {
+    solved: done.length,
+    optimal: done.filter(l => l.opt != null && l.best <= l.opt).length,
+    extra: done.reduce((a, l) => a + (l.opt != null ? Math.max(0, l.best - l.opt) : 0), 0),
+    moves: done.reduce((a, l) => a + l.best, 0),
+  };
+}
+// Better game: more targets solved, then more optimal routes, then fewer extra moves.
+const better = (a, b) => (a.solved - b.solved) || (a.optimal - b.optimal) || (b.extra - a.extra);
+const bestRecord = () => records.reduce((b, r) => (!b || better(r, b) > 0 ? r : b), null);
+function recordGame() {
+  if (G.recorded || mode !== 'solo' || G.log.length < 17) return null;
+  const prev = bestRecord();
+  const entry = { date: Date.now(), ...soloSummary(G.log) };
+  records.push(entry);
+  if (records.length > 200) records = records.slice(-200);
+  store.set('rr5-records', records);
+  G.recorded = true;
+  return { entry, isBest: !prev || better(entry, prev) > 0, prev };
+}
+let clearArmed = null;
+function renderRecords() {
+  const box = $('#records');
+  box.textContent = '';
+  const head = document.createElement('div'); head.className = 'head';
+  const title = document.createElement('div'); title.className = 'eyebrow'; title.textContent = 'Your records';
+  head.append(title);
+  box.append(head);
+  if (!records.length) {
+    const p = document.createElement('p'); p.className = 'hint';
+    p.textContent = 'Finish all 17 targets in Solo to set your first record. Results are saved in this browser.';
+    box.append(p);
+    return;
+  }
+  const clear = document.createElement('button');
+  clear.className = 'linkbtn'; clear.id = 'btnClearRecords';
+  clear.textContent = clearArmed ? 'Tap again to clear all' : 'Clear';
+  clear.onclick = () => {
+    if (clearArmed) { clearTimeout(clearArmed); clearArmed = null; records = []; store.del('rr5-records'); toast('Records cleared'); }
+    else { clearArmed = setTimeout(() => { clearArmed = null; renderRecords(); }, 4000); }
+    renderRecords();
+  };
+  head.append(clear);
+  const best = bestRecord();
+  const tot = records.reduce((a, r) => ({ solved: a.solved + r.solved, optimal: a.optimal + r.optimal }), { solved: 0, optimal: 0 });
+  const stats = document.createElement('div'); stats.className = 'score';
+  [['Games', records.length], ['Best optimal', `${best.optimal}`], ['Optimal rate', tot.solved ? `${Math.round(100 * tot.optimal / tot.solved)}%` : '–']].forEach(([k, v]) => {
+    const s = document.createElement('div'); s.className = 'stat';
+    s.innerHTML = '<div class="eyebrow"></div><div class="big"></div>';
+    s.firstChild.textContent = k; s.lastChild.textContent = v;
+    stats.append(s);
+  });
+  box.append(stats);
+  const bl = document.createElement('div'); bl.className = 'best';
+  bl.textContent = `Best game: ${best.solved}/17 solved, ${best.optimal} optimal, +${best.extra} extra moves (${fmtDate(best.date)})`;
+  box.append(bl);
+  const ul = document.createElement('ul'); ul.className = 'rlist';
+  records.slice(-5).reverse().forEach(r => {
+    const li = document.createElement('li');
+    if (r === best) li.className = 'top';
+    li.innerHTML = '<span></span><span></span>';
+    li.firstChild.textContent = fmtDate(r.date);
+    li.lastChild.textContent = `${r.solved} solved · ${r.optimal} optimal · +${r.extra}`;
+    ul.append(li);
+  });
+  box.append(ul);
+}
+const fmtDate = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+let mode = 'solo';
+let anim = null, playing = false, soundOn = false, audio = null;
+
+function newGame() {
+  const { walls, targets } = generateBoard();
+  G = {
+    walls, targets, robots: placeRobots(targets),
+    deck: shuffle(targets.map((_, i) => i)), round: 0, cur: -1,
+    roundStart: null, history: [], solved: false, revealed: false, peeked: false, best: null,
+    opt: undefined, solution: null, solveId: 0, selected: 0, log: [],
+    phase: 'bidding', bids: [], timerEnd: null, timerLeft: null, demoIdx: 0, winner: null,
+  };
+  P.players.forEach(p => p.tokens = 0);
+  $('#over').hidden = true;
+  nextRound();
+}
+
+function targetRobots(t) { return t.color >= 0 ? [t.color] : [0, 1, 2, 3]; }
+function isTrivial(ti) {
+  const t = G.targets[ti];
+  for (const i of targetRobots(t)) {
+    if (G.robots[i] === t.cell) return true;
+    for (let d = 0; d < 4; d++) if (slide(G.walls, G.robots, i, d) === t.cell) return true;
+  }
+  return G.robots.some((c, i) => c === t.cell && !targetRobots(t).includes(i));
+}
+
+function nextRound() {
+  if (G.cur >= 0 && mode === 'solo') G.log.push({ best: G.revealed && G.best == null ? null : G.best, opt: G.opt, revealed: G.revealed && G.best == null });
+  if (!G.deck.length) { G.cur = -1; ui(); draw(); gameOver(); return; }
+  // A target reachable in one move (or already occupied) goes back under the deck, as in the tabletop rules.
+  let idx = -1;
+  for (let n = 0; n < G.deck.length; n++) {
+    if (!isTrivial(G.deck[0])) { idx = G.deck.shift(); break; }
+    G.deck.push(G.deck.shift());
+  }
+  if (idx < 0) idx = G.deck.shift();
+  Object.assign(G, {
+    cur: idx, round: G.round + 1, roundStart: G.robots.slice(), history: [],
+    solved: false, revealed: false, peeked: false, best: null, opt: undefined, solution: null,
+    phase: 'bidding', bids: [], timerEnd: null, timerLeft: null, demoIdx: 0, winner: null,
+  });
+  const t = G.targets[idx];
+  if (t.color >= 0) G.selected = t.color;
+  solve();
+  ui(); draw(); renderParty();
+}
+
+/* ---------- solver ---------- */
+const worker = new Worker(URL.createObjectURL(new Blob([$('#solverSrc').textContent], { type: 'text/javascript' })));
+worker.onmessage = e => {
+  if (!G || e.data.id !== G.solveId) return;
+  G.solution = e.data.moves;
+  G.opt = e.data.moves ? e.data.moves.length : null;
+  ui();
+};
+function solve() {
+  const t = G.targets[G.cur];
+  G.solveId++;
+  worker.postMessage({ id: G.solveId, walls: Array.from(G.walls), robots: G.roundStart.slice(), target: t.cell, goal: t.color });
+}
+
+/* ---------- moves ---------- */
+function movesAllowed() {
+  if (!G || G.cur < 0 || anim || playing) return false;
+  if (mode === 'solo') return !G.solved;
+  return G.phase === 'demo';
+}
+function isWin() {
+  const t = G.targets[G.cur];
+  return t.color >= 0 ? G.robots[t.color] === t.cell : G.robots.some((c, i) => c === t.cell && i !== SILVER);
+}
+function doMove(i, d) {
+  const from = G.robots[i], to = slide(G.walls, G.robots, i, d);
+  if (to === from) return null;
+  G.robots[i] = to;
+  G.history.push({ i, d, from, to });
+  ui();
+  return animate(i, from, to);
+}
+function userMove(i, d) {
+  if (anim || playing) return;
+  if (!movesAllowed()) { lockedMessage(); return; }
+  select(i);
+  const p = doMove(i, d);
+  if (!p) { toast(`The ${COLOR_NAMES[i].toLowerCase()} robot can't move ${['up', 'right', 'down', 'left'][d]}`); return; }
+  p.then(afterMove);
+}
+function afterMove() {
+  const n = G.history.length;
+  if (isWin()) {
+    if (mode === 'solo') {
+      G.solved = true;
+      if (!G.revealed) G.best = G.best == null ? n : Math.min(G.best, n);
+      const o = G.opt;
+      toast(o == null ? `Solved in ${n}` : n <= o ? `Solved in ${n}. That's optimal!` : `Solved in ${n}. Best possible is ${o}.`);
+    } else {
+      const b = G.queue[G.demoIdx];
+      P.players[b.p].tokens++;
+      G.winner = b.p; G.phase = 'done';
+      toast(`${P.players[b.p].name} wins the chip in ${n}!`);
+    }
+    chime();
+  } else if (mode === 'party' && G.phase === 'demo' && n >= G.queue[G.demoIdx].value) {
+    failDemo(`${P.players[G.queue[G.demoIdx].p].name} ran out of moves`);
+  }
+  ui(); renderParty();
+}
+function undo() {
+  if (mode !== 'solo' || anim || playing || !G.history.length) return;
+  const m = G.history.pop();
+  G.robots[m.i] = m.from; G.solved = false;
+  ui(); draw();
+}
+function resetRound() {
+  if (mode !== 'solo' || anim || playing) return;
+  G.robots = G.roundStart.slice(); G.history = []; G.solved = false;
+  ui(); draw();
+}
+async function playSolution() {
+  if (anim || playing) return;
+  if (G.solution === null && G.opt === undefined) { toast('Still searching for the shortest route…'); return; }
+  if (!G.solution) { toast('No route found within the search limit'); return; }
+  if (!G.solved) G.revealed = true;
+  playing = true;
+  G.robots = G.roundStart.slice(); G.history = [];
+  ui(); draw();
+  await wait(reduceMotion ? 0 : 350);
+  for (const [i, d] of G.solution) { G.selected = i; await doMove(i, d); await wait(reduceMotion ? 0 : 160); }
+  playing = false;
+  if (mode === 'solo') G.solved = true;
+  toast(`Shortest route: ${G.solution.length} moves`);
+  ui(); renderParty();
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- party flow ---------- */
+let timerInt = null;
+function placeBid(p, value) {
+  if (G.phase !== 'bidding') return;
+  value = Math.round(value);
+  if (!(value >= 2 && value <= 40)) { toast('Bids are whole numbers from 2 to 40'); return; }
+  G.bids = G.bids.filter(b => b.p !== p);
+  G.bids.push({ p, value, time: Date.now() });
+  if (!G.timerEnd) { G.timerEnd = Date.now() + P.duration * 1000; startTick(); }
+  renderParty();
+}
+function startTick() {
+  clearInterval(timerInt);
+  timerInt = setInterval(tick, 200);
+  tick();
+}
+function tick() {
+  if (!G || G.phase !== 'bidding' || !G.timerEnd) { clearInterval(timerInt); updateTimer(); return; }
+  if (Date.now() >= G.timerEnd) { clearInterval(timerInt); startDemo(); return; }
+  updateTimer();
+}
+function updateTimer() {
+  const total = P.duration * 1000;
+  const left = G && G.phase === 'bidding' && G.timerEnd ? Math.max(0, G.timerEnd - Date.now()) : (G && G.phase === 'bidding' ? total : 0);
+  const s = Math.ceil(left / 1000);
+  const el = $('#timerText');
+  el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  el.classList.toggle('low', G && G.timerEnd && G.phase === 'bidding' && s <= 10);
+  $('#timerBar').style.width = `${(left / total) * 100}%`;
+}
+function startDemo() {
+  clearInterval(timerInt);
+  G.timerEnd = null;
+  if (!G.bids.length) { G.phase = 'done'; G.winner = null; renderParty(); ui(); return; }
+  G.queue = G.bids.slice().sort((a, b) => a.value - b.value || a.time - b.time);
+  G.demoIdx = 0; G.phase = 'demo';
+  G.robots = G.roundStart.slice(); G.history = [];
+  const t = G.targets[G.cur]; if (t.color >= 0) G.selected = t.color;
+  toast(`${P.players[G.queue[0].p].name}: show it in ${G.queue[0].value}`);
+  renderParty(); ui(); draw();
+}
+function failDemo(msg) {
+  G.demoIdx++;
+  G.robots = G.roundStart.slice(); G.history = [];
+  if (G.demoIdx >= G.queue.length) { G.phase = 'done'; G.winner = null; toast(`${msg}. Nobody wins this chip.`); }
+  else toast(`${msg}. ${P.players[G.queue[G.demoIdx].p].name}, show it in ${G.queue[G.demoIdx].value}.`);
+  renderParty(); ui(); draw();
+}
+
+function renderParty() {
+  if (!G) return;
+  const box = $('#players');
+  box.textContent = '';
+  const demoP = G.phase === 'demo' ? G.queue[G.demoIdx].p : -1;
+  P.players.forEach((pl, idx) => {
+    const row = document.createElement('div');
+    row.className = 'prow' + (idx === demoP || idx === G.winner ? ' active' : '');
+    const name = document.createElement('input');
+    name.className = 'name'; name.value = pl.name; name.id = `pname${idx}`; name.maxLength = 24;
+    name.setAttribute('aria-label', `Player ${idx + 1} name`);
+    name.addEventListener('input', () => { pl.name = name.value || `Player ${idx + 1}`; savePlayers(); });
+    row.append(name);
+    const tok = document.createElement('span');
+    tok.className = 'tokens'; tok.textContent = `${pl.tokens} chip${pl.tokens === 1 ? '' : 's'}`;
+    row.append(tok);
+    const bid = G.bids.find(b => b.p === idx);
+    if (G.phase === 'bidding') {
+      const inp = document.createElement('input');
+      inp.className = 'bid'; inp.type = 'number'; inp.min = 2; inp.max = 40; inp.inputMode = 'numeric';
+      inp.id = `pbid${idx}`; inp.placeholder = '#'; inp.value = bid ? bid.value : '';
+      inp.setAttribute('aria-label', `${pl.name} bid`);
+      const go = document.createElement('button');
+      go.className = 'btn' + (bid ? '' : ' primary'); go.textContent = bid ? 'Rebid' : 'Bid';
+      const submit = () => placeBid(idx, parseFloat(inp.value));
+      go.onclick = submit;
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); e.stopPropagation(); });
+      row.append(inp, go);
+    } else {
+      const tag = document.createElement('span');
+      tag.className = 'bidtag'; tag.textContent = bid ? bid.value : '–';
+      row.append(tag, document.createElement('span'));
+    }
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '×'; x.title = `Remove ${pl.name}`; x.setAttribute('aria-label', `Remove ${pl.name}`);
+    x.disabled = P.players.length <= 1 || G.phase === 'demo';
+    x.onclick = () => {
+      P.players.splice(idx, 1);
+      G.bids = G.bids.filter(b => b.p !== idx).map(b => ({ ...b, p: b.p > idx ? b.p - 1 : b.p }));
+      if (G.winner === idx) G.winner = null; else if (G.winner > idx) G.winner--;
+      savePlayers(); renderParty();
+    };
+    row.append(x);
+    box.append(row);
+  });
+
+  const st = $('#partyStatus');
+  if (G.cur < 0) st.textContent = 'All 17 chips are taken.';
+  else if (G.phase === 'bidding') st.textContent = G.timerEnd ? 'Bids are open. Lower bids beat higher ones.' : 'Study the board. The first bid starts the timer.';
+  else if (G.phase === 'demo') { const b = G.queue[G.demoIdx]; st.textContent = `${P.players[b.p].name}, show your route in ${b.value} moves or fewer.`; }
+  else st.textContent = G.winner != null ? `${P.players[G.winner].name} takes the chip.` : 'Nobody claimed this chip.';
+
+  $('#btnEndTimer').disabled = !(G.phase === 'bidding' && G.timerEnd);
+  $('#btnGiveUp').hidden = G.phase !== 'demo';
+  $('#btnSkip').hidden = G.phase !== 'bidding' || G.bids.length > 0;
+  $('#btnAddPlayer').disabled = P.players.length >= 8;
+  updateTimer();
+  saveGame();
+}
+
+/* ---------- UI ---------- */
+function ui() {
+  if (!G) return;
+  const t = G.cur >= 0 ? G.targets[G.cur] : null;
+  $('#roundLabel').textContent = t ? `Target ${G.round} of 17` : 'All targets played';
+  $('#targetName').textContent = !t ? 'Game complete' : t.color < 0 ? 'Vortex' : `${COLOR_NAMES[t.color]} ${SHAPE_NAMES[t.shape]}`;
+  $('#targetSub').textContent = !t ? 'Start a new board to play again.' : t.color < 0 ? 'Any colored robot can claim it (not silver).' : `Get the ${COLOR_NAMES[t.color].toLowerCase()} robot onto it.`;
+  drawChip(t);
+  $('#moves').textContent = G.history.length;
+  $('#movesOf').textContent = mode === 'party' && G.phase === 'demo' ? `of ${G.queue[G.demoIdx].value}` : '';
+  const showOpt = G.solved || G.revealed || G.peeked || (mode === 'party' && G.phase === 'done');
+  const optEl = $('#opt');
+  if (G.opt === undefined) optEl.textContent = showOpt ? '…' : '?';
+  else if (G.opt === null) optEl.textContent = showOpt ? '20+' : '?';
+  else optEl.textContent = showOpt ? G.opt : '?';
+  $('#btnPeek').hidden = showOpt || mode === 'party' || !t;
+
+  const busy = !!anim || playing;
+  $('#btnUndo').disabled = mode !== 'solo' || busy || !G.history.length;
+  $('#btnReset').disabled = mode !== 'solo' || busy || !G.history.length;
+  $('#btnSolution').disabled = busy || !t || (mode === 'party' && G.phase !== 'done');
+  $('#btnNext').disabled = busy || !t || (mode === 'solo' ? false : G.phase !== 'done');
+  $('#btnNext').textContent = mode === 'solo' && !G.solved && t ? 'Skip target' : 'Next target';
+  $('#btnNext').classList.toggle('primary', mode !== 'solo' || G.solved);
+
+  [...$('#picker').children].forEach((b, i) => b.setAttribute('aria-pressed', String(G.selected === i)));
+
+  // solo score
+  const done = G.log.filter(l => l.best != null);
+  $('#sSolved').textContent = done.length;
+  $('#sOpt').textContent = done.filter(l => l.opt != null && l.best <= l.opt).length;
+  $('#sExtra').textContent = done.reduce((a, l) => a + (l.opt != null ? Math.max(0, l.best - l.opt) : 0), 0);
+  const log = $('#sLog'); log.textContent = '';
+  G.log.forEach((l, k) => {
+    const s = document.createElement('span');
+    if (l.best == null) { s.className = 'miss'; s.textContent = `#${k + 1} –`; s.title = 'Skipped or solution shown'; }
+    else { s.className = l.opt != null && l.best <= l.opt ? 'opt' : ''; s.textContent = `#${k + 1} ${l.best}/${l.opt ?? '?'}`; s.title = `${l.best} moves, best possible ${l.opt ?? 'unknown'}`; }
+    log.append(s);
+  });
+  draw();
+  saveGame();
+}
+function select(i) { G.selected = i; ui(); }
+function lockedMessage() {
+  if (mode === 'party') {
+    if (G.phase === 'bidding') toast('Robots stay locked until the timer runs out');
+    else if (G.phase === 'done') toast('Press Next target to continue');
+  } else if (G.solved) toast('Solved. Press Next target, or Undo to try for fewer moves.');
+}
+let toastT = null;
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  $('#modeSolo').setAttribute('aria-pressed', String(m === 'solo'));
+  $('#modeParty').setAttribute('aria-pressed', String(m === 'party'));
+  $('#soloPanel').hidden = m !== 'solo';
+  $('#partyPanel').hidden = m !== 'party';
+  clearInterval(timerInt);
+  // switching restarts the current round in the new mode
+  G.robots = G.roundStart.slice(); G.history = []; G.solved = false; G.revealed = false; G.peeked = false; G.best = null;
+  G.phase = 'bidding'; G.bids = []; G.timerEnd = null; G.winner = null;
+  renderParty(); ui();
+}
+
+function gameOver() {
+  const body = $('#overBody'); body.textContent = '';
+  if (mode === 'party') {
+    const sorted = P.players.map((p, i) => ({ ...p, i })).sort((a, b) => b.tokens - a.tokens);
+    const top = sorted[0].tokens;
+    const winners = sorted.filter(p => p.tokens === top && top > 0).map(p => p.name);
+    $('#overTitle').textContent = winners.length ? `${winners.join(' & ')} win${winners.length > 1 ? '' : 's'}` : 'Game over';
+    const st = document.createElement('div'); st.className = 'standings';
+    sorted.forEach(p => { const d = document.createElement('div'); d.innerHTML = `<span></span><span>${p.tokens} chip${p.tokens === 1 ? '' : 's'}</span>`; d.firstChild.textContent = p.name; st.append(d); });
+    body.append(st);
+  } else {
+    const sm = soloSummary(G.log);
+    $('#overTitle').textContent = 'All 17 targets played';
+    const p = document.createElement('p');
+    p.textContent = `You solved ${sm.solved} of 17 targets and matched the optimal route on ${sm.optimal}. Total moves: ${sm.moves}.`;
+    body.append(p);
+    const r = recordGame();
+    if (r) {
+      const q = document.createElement('p');
+      q.className = r.isBest ? 'pb' : '';
+      q.textContent = r.isBest
+        ? (r.prev ? `New personal best! Your previous best was ${r.prev.solved} solved, ${r.prev.optimal} optimal, +${r.prev.extra} extra.` : 'Your first saved record. Beat it next time!')
+        : `Your best game is ${r.prev.solved} solved, ${r.prev.optimal} optimal, +${r.prev.extra} extra. This game is saved in your records.`;
+      body.append(q);
+      renderRecords();
+    } else if (G.log.length < 17) {
+      const q = document.createElement('p'); q.className = 'hint';
+      q.textContent = 'Some targets were played in Party mode, so this game is not saved to your Solo records.';
+      body.append(q);
+    }
+  }
+  $('#over').hidden = false;
+}
+
+/* ---------- rendering ---------- */
+const cv = $('#board'), ctx = cv.getContext('2d');
+let size = 600, colors = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['board', 'tile', 'tile-hi', 'center', 'wall', 'r0', 'r1', 'r2', 'r3', 'r4', 'fg', 'bg']) colors[k] = cs.getPropertyValue('--' + k).trim();
+  colors.robot = [colors.r0, colors.r1, colors.r2, colors.r3, colors.r4];
+}
+function resize() {
+  const wrap = $('#boardWrap');
+  const wide = innerWidth > 880;
+  size = Math.floor(Math.min(wrap.clientWidth, wide ? Math.max(360, innerHeight - 100) : 9999));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = cv.style.height = size + 'px';
+  cv.width = cv.height = Math.round(size * dpr);
+  ctx.setTransform(cv.width / size, 0, 0, cv.height / size, 0, 0);
+  draw();
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+function shapePath(c, shape, x, y, r, col) {
+  c.fillStyle = col; c.strokeStyle = col;
+  if (shape === 0) { // moon
+    c.save(); c.beginPath(); c.rect(x - r * 2, y - r * 2, r * 4, r * 4); c.arc(x + r * 0.42, y - r * 0.28, r * 0.78, 0, Math.PI * 2, true); c.clip('evenodd');
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.restore();
+  } else if (shape === 1) { // star
+    c.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? r * 0.45 : r * 1.05; c.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); }
+    c.closePath(); c.fill();
+  } else if (shape === 2) { // gear
+    c.beginPath();
+    const teeth = 8;
+    for (let k = 0; k < teeth * 4; k++) { const a = k * Math.PI * 2 / (teeth * 4), rad = (k % 4 < 2) ? r : r * 0.74; c.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); }
+    c.closePath(); c.moveTo(x + r * 0.32, y); c.arc(x, y, r * 0.32, 0, Math.PI * 2, true); c.fill('evenodd');
+  } else if (shape === 3) { // planet
+    c.beginPath(); c.arc(x, y, r * 0.62, 0, Math.PI * 2); c.fill();
+    c.lineWidth = Math.max(1.5, r * 0.16);
+    c.beginPath(); c.ellipse(x, y, r * 1.08, r * 0.36, -0.45, 0, Math.PI * 2); c.stroke();
+  } else { // vortex
+    c.lineWidth = Math.max(1.5, r * 0.22); c.lineCap = 'round';
+    for (let k = 0; k < 4; k++) {
+      c.strokeStyle = colors.robot[k];
+      c.beginPath();
+      for (let s = 0; s <= 16; s++) { const u = s / 16, a = k * Math.PI / 2 + u * Math.PI * 1.1, rad = r * (0.15 + 0.9 * u); c.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); }
+      c.stroke();
+    }
+  }
+}
+function targetColor(t) { return t.color >= 0 ? colors.robot[t.color] : colors.fg; }
+
+const chipCtx = $('#chip').getContext('2d');
+function drawChip(t) {
+  chipCtx.clearRect(0, 0, 128, 128);
+  if (!t) return;
+  shapePath(chipCtx, t.shape, 64, 64, 36, t.color >= 0 ? colors.robot[t.color] : colors.fg);
+}
+
+function cellXY(c) { const s = size / 16; return [(c & 15) * s + s / 2, (c >> 4) * s + s / 2]; }
+
+function draw() {
+  if (!G) return;
+  const s = size / 16;
+  ctx.fillStyle = colors.board; ctx.fillRect(0, 0, size, size);
+  // tiles
+  const pad = Math.max(1, s * 0.05);
+  for (let c = 0; c < 256; c++) {
+    if (isCenter(c)) continue;
+    const x = (c & 15) * s, y = (c >> 4) * s;
+    ctx.fillStyle = ((c >> 4) + (c & 15)) % 2 ? colors.tile : colors['tile-hi'];
+    rr(x + pad, y + pad, s - pad * 2, s - pad * 2, s * 0.14); ctx.fill();
+  }
+  // center block with current target chip
+  ctx.fillStyle = colors.center;
+  rr(7 * s + pad, 7 * s + pad, 2 * s - pad * 2, 2 * s - pad * 2, s * 0.25); ctx.fill();
+  const cur = G.cur >= 0 ? G.targets[G.cur] : null;
+  if (cur) shapePath(ctx, cur.shape, 8 * s, 8 * s, s * 0.62, cur.color >= 0 ? colors.robot[cur.color] : colors.bg);
+
+  // targets
+  G.targets.forEach((t, i) => {
+    const [x, y] = cellXY(t.cell);
+    const active = i === G.cur;
+    ctx.globalAlpha = active ? 1 : 0.5;
+    if (active) {
+      ctx.fillStyle = targetColor(t); ctx.globalAlpha = 0.18;
+      rr(x - s / 2 + pad, y - s / 2 + pad, s - pad * 2, s - pad * 2, s * 0.14); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = Math.max(2, s * 0.07); ctx.strokeStyle = targetColor(t);
+      rr(x - s / 2 + pad * 2, y - s / 2 + pad * 2, s - pad * 4, s - pad * 4, s * 0.12); ctx.stroke();
+    }
+    shapePath(ctx, t.shape, x, y, s * (active ? 0.3 : 0.26), targetColor(t));
+    ctx.globalAlpha = 1;
+  });
+
+  // trails
+  ctx.lineCap = 'round';
+  G.history.forEach((m, k) => {
+    if (anim && k === G.history.length - 1 && anim.i === m.i) return;
+    const [x1, y1] = cellXY(m.from), [x2, y2] = cellXY(m.to);
+    ctx.strokeStyle = colors.robot[m.i]; ctx.globalAlpha = 0.35; ctx.lineWidth = s * 0.14;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+
+  // landing hints for the selected robot
+  if (G.selected != null && movesAllowed()) {
+    const i = G.selected, [rx, ry] = cellXY(G.robots[i]);
+    for (let d = 0; d < 4; d++) {
+      const to = slide(G.walls, G.robots, i, d);
+      if (to === G.robots[i]) continue;
+      const [x, y] = cellXY(to);
+      ctx.strokeStyle = colors.robot[i]; ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1, s * 0.04);
+      ctx.setLineDash([s * 0.08, s * 0.14]);
+      ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(x, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(1.5, s * 0.07);
+      ctx.beginPath(); ctx.arc(x, y, s * 0.2, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // walls
+  const wt = Math.max(3, s * 0.12);
+  ctx.fillStyle = colors.wall;
+  for (let c = 0; c < 256; c++) {
+    const w = G.walls[c], x = (c & 15) * s, y = (c >> 4) * s;
+    if (w & 1) rr(x - wt / 2, y - wt / 2, s + wt, wt, wt / 2), ctx.fill();
+    if (w & 8) rr(x - wt / 2, y - wt / 2, wt, s + wt, wt / 2), ctx.fill();
+    if ((c >> 4) === 15 && (w & 4)) rr(x - wt / 2, y + s - wt / 2, s + wt, wt, wt / 2), ctx.fill();
+    if ((c & 15) === 15 && (w & 2)) rr(x + s - wt / 2, y - wt / 2, wt, s + wt, wt / 2), ctx.fill();
+  }
+
+  // robots
+  for (let i = 0; i < NR; i++) {
+    let [x, y] = cellXY(G.robots[i]);
+    if (anim && anim.i === i) {
+      const [x1, y1] = cellXY(anim.from), [x2, y2] = cellXY(anim.to), u = anim.p, e = 1 - Math.pow(1 - u, 3);
+      x = x1 + (x2 - x1) * e; y = y1 + (y2 - y1) * e;
+    }
+    drawRobot(x, y, s, i, G.selected === i);
+  }
+}
+function drawRobot(x, y, s, i, sel) {
+  const r = s * 0.34, col = colors.robot[i];
+  if (sel) {
+    ctx.strokeStyle = colors.fg; ctx.lineWidth = Math.max(2, s * 0.06);
+    ctx.beginPath(); ctx.arc(x, y, r + s * 0.1, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.22, r, r * 0.95, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  // head
+  ctx.fillStyle = 'rgba(255,255,255,.28)';
+  ctx.beginPath(); ctx.arc(x, y - r * 0.12, r * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(x, y - r * 0.12, r * 0.48, 0, Math.PI * 2); ctx.fill();
+  // visor
+  ctx.fillStyle = 'rgba(10,12,20,.75)';
+  rr(x - r * 0.36, y - r * 0.26, r * 0.72, r * 0.22, r * 0.11); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.arc(x - r * 0.16, y - r * 0.15, r * 0.055, 0, Math.PI * 2); ctx.arc(x + r * 0.16, y - r * 0.15, r * 0.055, 0, Math.PI * 2); ctx.fill();
+}
+
+function animate(i, from, to) {
+  return new Promise(res => {
+    const dist = Math.abs((to >> 4) - (from >> 4)) + Math.abs((to & 15) - (from & 15));
+    const dur = reduceMotion ? 0 : Math.min(420, 90 + dist * 32);
+    anim = { i, from, to, p: 0 };
+    const t0 = performance.now();
+    const step = now => {
+      anim.p = dur ? Math.min(1, (now - t0) / dur) : 1;
+      draw();
+      if (anim.p < 1) requestAnimationFrame(step);
+      else { anim = null; clack(); draw(); ui(); res(true); }
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---------- sound ---------- */
+function clack() {
+  if (!soundOn || !audio) return;
+  const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+  o.type = 'triangle'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.08);
+  g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.12);
+}
+function chime() {
+  if (!soundOn || !audio) return;
+  [523, 659, 784].forEach((f, k) => {
+    const t = audio.currentTime + k * 0.09, o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.4);
+  });
+}
+
+/* ---------- input ---------- */
+let down = null;
+function cellAt(e) {
+  const b = cv.getBoundingClientRect(), s = b.width / 16;
+  const c = Math.min(15, Math.max(0, Math.floor((e.clientX - b.left) / s)));
+  const r = Math.min(15, Math.max(0, Math.floor((e.clientY - b.top) / s)));
+  return r * 16 + c;
+}
+cv.addEventListener('pointerdown', e => {
+  if (!G) return;
+  const cell = cellAt(e), ri = G.robots.indexOf(cell);
+  down = { x: e.clientX, y: e.clientY, robot: ri, cell };
+  if (ri >= 0) { select(ri); try { cv.setPointerCapture(e.pointerId); } catch (_) {} }
+});
+cv.addEventListener('pointerup', e => {
+  if (!down || !G) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y, s = cv.getBoundingClientRect().width / 16;
+  const dirOf = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0);
+  if (down.robot >= 0) {
+    if (Math.hypot(dx, dy) > s * 0.35) userMove(down.robot, dirOf(dx, dy));
+    else if (!movesAllowed()) lockedMessage();
+  } else if (G.selected != null) {
+    const rc = G.robots[G.selected], c = down.cell;
+    if ((rc >> 4) === (c >> 4) || (rc & 15) === (c & 15)) userMove(G.selected, dirOf((c & 15) - (rc & 15), (c >> 4) - (rc >> 4)));
+  }
+  down = null;
+});
+cv.addEventListener('pointercancel', () => { down = null; });
+
+document.addEventListener('keydown', e => {
+  if (!G || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!$('#help').hidden) { if (e.key === 'Escape') $('#help').hidden = true; return; }
+  const k = e.key.toLowerCase();
+  const pick = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, r: 0, g: 1, b: 2, y: 3, s: 4 }[k];
+  const dir = { arrowup: 0, arrowright: 1, arrowdown: 2, arrowleft: 3 }[k];
+  if (pick !== undefined) { select(pick); e.preventDefault(); }
+  else if (k === 'tab' && document.activeElement === cv) { select(((G.selected ?? -1) + (e.shiftKey ? NR - 1 : 1)) % NR); e.preventDefault(); }
+  else if (dir !== undefined && G.selected != null) { userMove(G.selected, dir); e.preventDefault(); }
+  else if (k === 'z' || k === 'backspace') { undo(); e.preventDefault(); }
+  else if (k === 'escape') resetRound();
+  else if (k === 'n' && !$('#btnNext').disabled) nextRound();
+});
+
+const picker = $('#picker');
+COLOR_NAMES.forEach((n, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `<i style="background:var(--r${i})"></i>${n} <kbd>${i + 1}</kbd>`;
+  b.setAttribute('aria-pressed', 'false');
+  b.onclick = () => select(i);
+  picker.append(b);
+});
+
+$('#btnUndo').onclick = undo;
+$('#btnReset').onclick = resetRound;
+$('#btnSolution').onclick = playSolution;
+$('#btnNext').onclick = () => nextRound();
+$('#btnPeek').onclick = () => { G.peeked = true; ui(); };
+$('#btnNew').onclick = newGame;
+$('#btnOverNew').onclick = newGame;
+$('#btnOverClose').onclick = () => { $('#over').hidden = true; };
+$('#btnHelp').onclick = () => { $('#help').hidden = false; $('#btnHelpClose').focus(); };
+$('#btnHelpClose').onclick = () => { $('#help').hidden = true; };
+$('#help').addEventListener('click', e => { if (e.target.id === 'help') $('#help').hidden = true; });
+$('#modeSolo').onclick = () => setMode('solo');
+$('#modeParty').onclick = () => setMode('party');
+$('#btnSound').onclick = () => {
+  soundOn = !soundOn;
+  if (soundOn && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { soundOn = false; } }
+  $('#btnSound').textContent = soundOn ? 'Sound on' : 'Sound off';
+  $('#btnSound').setAttribute('aria-pressed', String(soundOn));
+};
+$('#btnEndTimer').onclick = () => { if (G.phase === 'bidding' && G.timerEnd) startDemo(); };
+$('#btnGiveUp').onclick = () => { if (G.phase === 'demo' && !anim) failDemo(`${P.players[G.queue[G.demoIdx].p].name} gave up`); };
+$('#btnSkip').onclick = () => { if (G.phase === 'bidding') startDemo(); };
+$('#btnAddPlayer').onclick = () => { if (P.players.length < 8) { P.players.push({ name: `Player ${P.players.length + 1}`, tokens: 0 }); savePlayers(); renderParty(); } };
+$('#timerLen').onchange = e => { P.duration = +e.target.value; updateTimer(); };
+
+const themeChange = () => { readColors(); ui(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChange);
+new MutationObserver(themeChange).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+new ResizeObserver(resize).observe($('#boardWrap'));
+addEventListener('resize', resize);
+
+/* ---------- boot (keeps the game across live page updates and reloads) ---------- */
+function validSave(d) {
+  return d && d.G && Array.isArray(d.G.walls) && d.G.walls.length === 256 && Array.isArray(d.G.targets) && d.G.targets.length === 17
+    && Array.isArray(d.G.robots) && d.G.robots.length === NR && Array.isArray(d.G.log) && d.G.cur >= 0;
+}
+function start(data) {
+  readColors();
+  renderRecords();
+  if (!(data && data.G)) { const saved = store.get('rr5-game', null); if (validSave(saved)) data = saved; }
+  if (data && data.G) {
+    G = { ...data.G, walls: Uint8Array.from(data.G.walls) };
+    P = data.P || P;
+    if (data.mode && data.mode !== mode) { mode = data.mode; $('#modeSolo').setAttribute('aria-pressed', String(mode === 'solo')); $('#modeParty').setAttribute('aria-pressed', String(mode === 'party')); $('#soloPanel').hidden = mode !== 'solo'; $('#partyPanel').hidden = mode !== 'party'; }
+    if (G.cur >= 0 && G.opt === undefined) solve();
+    if (G.phase === 'bidding' && G.timerEnd) startTick();
+    resize(); ui(); renderParty();
+  } else {
+    newGame();
+    resize();
+  }
+}
+window.claude?.hot?.snapshot?.(snapshot);
+addEventListener('pagehide', () => { clearTimeout(saveT); store.set('rr5-game', snapshot()); });
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
