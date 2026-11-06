@@ -1,0 +1,493 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Turncoat</title>
+<meta charset="utf-8">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: a tailor's table. A six-sided patch of buff cloth with stitched lines; red and blue coat buttons are the stones. One deliberate look. */
+:root{
+  --room:#2c3930; --room-deep:#232e27; --panel:#26322a; --line:#46574b;
+  --cloth:#d3c5a0; --cloth-deep:#c2b28a; --thread:#8d7c58;
+  --red:#b5302a; --red-hi:#e0675b; --blue:#27487f; --blue-hi:#6b92cf;
+  --brass:#dcb760; --text:#f0e8d4; --muted:#b9c0ab;
+  --f-display:"IM Fell English SC", Georgia, serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}   /* hidden panels must never cover the board, even outside the viewer */
+table{color:inherit; font-size:inherit; font-weight:inherit; font-style:inherit; line-height:inherit}
+*{box-sizing:border-box}
+body{margin:0; background:var(--room); color:var(--text); font-family:var(--f-body); font-size:16px; line-height:1.4}
+button,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+
+.app{height:100%; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px;
+  padding-block:12px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.main{display:flex; flex-direction:column; gap:8px; min-width:0; min-height:0}
+header{display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 16px}
+h1{margin:0; font-family:var(--f-display); font-weight:400; font-size:32px; line-height:1.05; color:var(--brass)}
+.status{font-size:18px; font-weight:700; margin-left:auto; min-height:1.4em; text-align:right; text-wrap:balance}
+.status .dot{display:inline-block; width:.8em; height:.8em; border-radius:50%; margin-right:.4em; vertical-align:-.04em; border:2px solid var(--text)}
+.status.over{color:var(--brass)}
+.wrap{flex:1; min-height:0; display:grid; place-items:center}
+#board{display:block; touch-action:manipulation; cursor:pointer}
+
+.rail{display:flex; flex-direction:column; gap:12px; min-height:0; overflow-y:auto; padding-bottom:6px}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+.panel h2,summary{margin:0; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--muted)}
+summary{cursor:pointer}
+.sides{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.side b{display:block; font-weight:700}
+.side .n{font-size:13.5px; color:var(--muted); font-variant-numeric:tabular-nums}
+.side.turn b{color:var(--brass)}
+.btns{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.btn{background:transparent; border:1px solid var(--brass); color:var(--text); border-radius:6px; padding:9px 10px; font-weight:700; cursor:pointer}
+.btn.primary{background:var(--brass); color:var(--room-deep)}
+.btn:disabled{opacity:.42; cursor:default}
+.field{display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:15px}
+.field select{background:var(--room-deep); border:1px solid var(--line); border-radius:6px; padding:5px 6px; max-width:60%}
+.note{margin:0; font-size:14px; color:var(--muted)}
+.rules{margin:10px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:6px; font-size:15px}
+.rules b{color:var(--brass)}
+.tally{font-variant-numeric:tabular-nums; font-size:15px}
+
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{grid-template-columns:minmax(0,1fr); height:auto}
+  .rail{overflow:visible}
+}
+</style>
+
+<div class="app" id="app">
+  <div class="main">
+    <header>
+      <h1>Turncoat</h1>
+      <div class="status" id="status" role="status"></div>
+    </header>
+    <div class="wrap" id="wrap"><canvas id="board" tabindex="0" aria-label="Game board. Tap a point to place a button."></canvas></div>
+  </div>
+  <aside class="rail">
+    <section class="panel">
+      <div class="sides">
+        <div class="side" id="sideRed"><b>Red</b><span class="n" id="infoRed"></span></div>
+        <div class="side" id="sideBlue"><b>Blue</b><span class="n" id="infoBlue"></span></div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="btnUndo" type="button">Undo</button>
+        <button class="btn" id="btnNew" type="button">New game</button>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Next game</h2>
+      <div class="field"><label for="optOpp">Opponent</label>
+        <select id="optOpp"><option value="hard">Computer, hard</option><option value="medium">Computer, medium</option><option value="easy">Computer, easy</option><option value="human">Two players</option></select></div>
+      <div class="field"><label for="optSide">You play</label>
+        <select id="optSide"><option value="1">Red (first)</option><option value="2">Blue (second)</option><option value="0">Take turns</option></select></div>
+      <div class="tally" id="tally"></div>
+    </section>
+    <details class="panel" open id="rulesBox">
+      <summary>How to play</summary>
+      <ul class="rules">
+        <li>Take turns placing a button on an empty point. Red goes first. Blue places <b>two</b> on its first turn, then everyone places one.</li>
+        <li><b>Five in a row</b> wins, along any of the three directions.</li>
+        <li><b>Turn them:</b> trap exactly two enemy buttons in a straight line between your new button and another of yours, and both switch to your color. They count for you right away.</li>
+        <li><b>Sewn down:</b> a turned button gets stitched in place and can never be turned again.</li>
+      </ul>
+    </details>
+  </aside>
+</div>
+
+<script>
+(() => {
+/* ---------- rules and computer player. engine() also runs inside the worker, so it must stand alone. ---------- */
+function engine(){
+  const RAD = 7, WID = 15, NC = WID * WID;
+  const idx = (q, r) => (r + RAD) * WID + (q + RAD);
+  const cells = [], pos = {}, valid = new Uint8Array(NC);
+  for (let r = -RAD; r <= RAD; r++) for (let q = -RAD; q <= RAD; q++)
+    if (Math.abs(q + r) <= RAD){ const c = idx(q, r); cells.push(c); valid[c] = 1; pos[c] = [q, r]; }
+  const DIRS = [[1,0],[0,1],[1,-1],[-1,0],[0,-1],[-1,1]];
+  const NEXT = new Int16Array(NC * 6).fill(-1);
+  for (const c of cells) for (let d = 0; d < 6; d++){
+    const q = pos[c][0] + DIRS[d][0], r = pos[c][1] + DIRS[d][1];
+    if (Math.abs(q) <= RAD && Math.abs(r) <= RAD && Math.abs(q + r) <= RAD) NEXT[c * 6 + d] = idx(q, r);
+  }
+  const WINS = [], cellWins = Array.from({length:NC}, () => []);
+  for (const c of cells) for (let d = 0; d < 3; d++){
+    const w = [c]; let n = c;
+    for (let k = 0; k < 4 && n >= 0; k++){ n = NEXT[n * 6 + d]; if (n >= 0) w.push(n); }
+    if (w.length === 5){ for (const x of w) cellWins[x].push(WINS.length); WINS.push(w); }
+  }
+  // Pairs of enemy buttons that a button placed at c would turn.
+  function flipsAt(b, s, c, me){
+    const out = [], op = 3 - me;
+    for (let d = 0; d < 6; d++){
+      const a = NEXT[c * 6 + d]; if (a < 0 || b[a] !== op || s[a]) continue;
+      const e = NEXT[a * 6 + d]; if (e < 0 || b[e] !== op || s[e]) continue;
+      const f = NEXT[e * 6 + d]; if (f < 0 || b[f] !== me) continue;
+      out.push(a, e);
+    }
+    return out;
+  }
+  function fiveCells(b, me){
+    const hit = new Set();
+    for (const w of WINS) if (w.every(c => b[c] === me)) w.forEach(c => hit.add(c));
+    return [...hit];
+  }
+
+  const WIN = 1e7, V = [0, 2, 14, 90, 700, 1e6], ABORT = {};
+  function think(board, sealed, side, level, opts = {}){
+    const B = Int8Array.from(board), S = Uint8Array.from(sealed);
+    if (!cells.some(c => B[c])){ const near = cells.filter(c => Math.abs(pos[c][0]) <= 1 && Math.abs(pos[c][1]) <= 1 && Math.abs(pos[c][0] + pos[c][1]) <= 1); return near[Math.floor(Math.random() * near.length)]; }
+    const cfg = {easy:{d:1, ms:50, n:1e3}, medium:{d:3, ms:600, n:30000}, hard:{d:14, ms:1500, n:300000}}[level];
+    const nw = WINS.length, A1 = new Int8Array(nw), A2 = new Int8Array(nw), CNT = [null, A1, A2];
+    const five = [0,0,0], four = [0,0,0];
+    let sc = 0, nodes = 0;
+    const deadline = Date.now() + (opts.ms ?? cfg.ms), maxNodes = opts.nodes ?? cfg.n;
+    const val = (x, y) => x && y ? 0 : x ? V[x] : -V[y];
+    function add(c, col, dir){
+      const L = cellWins[c], Cn = CNT[col];
+      for (let i = 0; i < L.length; i++){
+        const w = L[i]; let x = A1[w], y = A2[w];
+        sc -= val(x, y);
+        if (y === 0 && x === 4) four[1]--; if (x === 0 && y === 4) four[2]--; if (x === 5) five[1]--; if (y === 5) five[2]--;
+        Cn[w] += dir; x = A1[w]; y = A2[w];
+        if (y === 0 && x === 4) four[1]++; if (x === 0 && y === 4) four[2]++; if (x === 5) five[1]++; if (y === 5) five[2]++;
+        sc += val(x, y);
+      }
+    }
+    for (const c of cells) if (B[c]) add(c, B[c], 1);
+    function play(c, me){
+      const f = flipsAt(B, S, c, me), op = 3 - me;
+      B[c] = me; add(c, me, 1);
+      for (const x of f){ B[x] = me; S[x] = 1; add(x, op, -1); add(x, me, 1); }
+      return f;
+    }
+    function unplay(c, me, f){
+      const op = 3 - me;
+      for (const x of f){ add(x, me, -1); add(x, op, 1); B[x] = op; S[x] = 0; }
+      add(c, me, -1); B[c] = 0;
+    }
+    function gen(me, width){
+      const op = 3 - me, Am = CNT[me], Ao = CNT[op], flipV = four[op] ? 2e6 : 160, out = [];
+      for (let i = 0; i < cells.length; i++){
+        const c = cells[i]; if (B[c]) continue;
+        const L = cellWins[c]; let s = 0;
+        for (let k = 0; k < L.length; k++){
+          const w = L[k], a = Am[w], b = Ao[w];
+          if (!b && a) s += V[a + 1] - V[a];
+          else if (!a && b) s += (V[b + 1] - V[b]) * 0.8;
+        }
+        if (s <= 0) continue;
+        s += flipsAt(B, S, c, me).length * flipV;
+        out.push([s, c]);
+      }
+      out.sort((p, q) => q[0] - p[0]);
+      return out.length > width ? out.slice(0, width) : out;
+    }
+    function nm(d, al, be, me, ply){
+      const op = 3 - me;
+      if (five[op]) return -WIN + ply;
+      if (four[me]) return WIN - ply - 1;
+      if (four[op] && ply < 14) d++;                       // a forced reply costs no depth
+      if (d <= 0) return (me === 1 ? sc : -sc) + 30;
+      if (++nodes > maxNodes || ((nodes & 1023) === 0 && Date.now() > deadline)) throw ABORT;
+      const M = gen(me, ply < 2 ? 14 : 9);
+      if (!M.length) return 0;
+      let best = -Infinity;
+      for (const [, c] of M){
+        const f = play(c, me), v = -nm(d - 1, -be, -al, op, ply + 1);
+        unplay(c, me, f);
+        if (v > best) best = v;
+        if (v > al) al = v;
+        if (al >= be) break;
+      }
+      return best;
+    }
+    const root = gen(side, 18);
+    if (!root.length) return cells.find(c => !B[c]);
+    if (level === 'easy'){                                // makes obvious mistakes on purpose
+      const top = root[0];
+      if (top[0] >= 1e5 && Math.random() < 0.75) return top[1];
+      const pick = root.slice(0, 6);
+      return pick[Math.floor(Math.random() * pick.length)][1];
+    }
+    let bestC = root[0][1];
+    try {
+      for (let d = 1; d <= (opts.depth ?? cfg.d); d++){
+        let al = -Infinity, cur = null;
+        for (const m of root){
+          const f = play(m[1], side), v = -nm(d - 1, -Infinity, -al, 3 - side, 1) + Math.random() * 2;
+          unplay(m[1], side, f);
+          m[2] = v;
+          if (v > al){ al = v; cur = m[1]; }
+        }
+        bestC = cur ?? bestC;
+        root.sort((p, q) => q[2] - p[2]);
+        if (Math.abs(al) > WIN / 2) break;
+      }
+    } catch (e) { if (e !== ABORT) throw e; }
+    return bestC;
+  }
+  return {NC, RAD, cells, pos, valid, NEXT, flipsAt, fiveCells, think};
+}
+
+const E = engine();
+const $ = id => document.getElementById(id);
+const NAME = [, 'Red', 'Blue'];
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- settings and saves (this browser only) ---------- */
+const store = {
+  get(k, d){ try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch (e) { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+const SET = {opp:'hard', side:'1', ...store.get('turncoat-settings', {})};
+const saveSet = () => store.set('turncoat-settings', SET);
+let tally = store.get('turncoat-tally', {});
+let G = null, anim = [], rafOn = false, hover = null;
+const snapshot = () => ({G});
+const saveGame = () => store.set('turncoat-game', G);
+
+function newGame(){
+  const prev = G && G.human;
+  const side = SET.side === '0' ? (prev === 1 ? 2 : 1) : +SET.side;
+  G = {board:Array(E.NC).fill(0), sealed:Array(E.NC).fill(0), turn:1, left:1, moves:0, last:null, winner:0, line:[], turned:[0,0,0],
+       opp:SET.opp, human:SET.opp === 'human' ? 0 : side, history:[]};
+  anim = []; hover = null; thinkId++;
+  turnStart();
+}
+
+/* ---------- moves ---------- */
+const stones = c => E.cells.reduce((n, x) => n + (G.board[x] === c ? 1 : 0), 0);
+const computerTurn = () => G.human && G.turn !== G.human;
+function place(c){
+  const me = G.turn, op = 3 - me;
+  G.history.push({board:G.board.slice(), sealed:G.sealed.slice(), turn:G.turn, left:G.left, moves:G.moves, last:G.last, turned:G.turned.slice()});
+  const f = E.flipsAt(G.board, G.sealed, c, me);
+  G.board[c] = me;
+  for (const x of f){ G.board[x] = me; G.sealed[x] = 1; }
+  G.turned[me] += f.length;
+  G.moves++; G.last = c; hover = null;
+  const t0 = performance.now();
+  if (!reduceMotion){ anim.push({c, t0, kind:'drop', col:me}); f.forEach((x, i) => anim.push({c:x, t0:t0 + 120 + i * 60, kind:'flip', from:op, col:me})); kick(); }
+  const line = E.fiveCells(G.board, me);
+  if (line.length){ G.winner = me; G.line = line; recordResult(me); }
+  else if (!E.cells.some(x => !G.board[x])) G.winner = 3;
+  else if (--G.left <= 0){ G.turn = op; G.left = G.moves === 1 ? 2 : 1; }
+  if (f.length) G.flash = {n:f.length, who:me}; else G.flash = null;
+  turnStart();
+}
+function recordResult(w){
+  if (!G.human) return;
+  const t = tally[G.opp] || (tally[G.opp] = {w:0, l:0});
+  if (w === G.human) t.w++; else t.l++;
+  store.set('turncoat-tally', tally);
+}
+function undo(){
+  if (G.winner || !G.history.length) return;
+  thinkId++;
+  let h;
+  do h = G.history.pop(); while (G.human && h.turn !== G.human && G.history.length);
+  if (G.human && h.turn !== G.human) { G.history.push(h); return; }
+  Object.assign(G, h); G.flash = null; anim = [];
+  turnStart();
+}
+
+/* ---------- computer turn, in a worker so the page stays responsive ---------- */
+let thinkId = 0, worker = null;
+try {
+  const src = `const E = (${engine.toString()})(); onmessage = e => { const d = e.data; postMessage({id:d.id, cell:E.think(d.board, d.sealed, d.side, d.level)}); };`;
+  worker = new Worker(URL.createObjectURL(new Blob([src], {type:'text/javascript'})));
+  worker.onmessage = e => { if (e.data.id === thinkId) finishThink(e.data.cell); };
+  worker.onerror = () => { worker = null; if (G && computerTurn() && !G.winner) askComputer(); };
+} catch (e) { worker = null; }
+let thinkStart = 0;
+function finishThink(cell){
+  const wait = Math.max(0, 450 - (performance.now() - thinkStart)), id = thinkId;
+  setTimeout(() => { if (id === thinkId && G && !G.winner && computerTurn() && !G.board[cell]) place(cell); }, wait);
+}
+function askComputer(){
+  thinkId++; thinkStart = performance.now();
+  const id = thinkId, msg = {id, board:G.board, sealed:G.sealed, side:G.turn, level:G.opp};
+  if (worker) worker.postMessage(msg);
+  else setTimeout(() => { if (id === thinkId) finishThink(E.think(msg.board, msg.sealed, msg.side, msg.level, {ms:900})); }, 30);
+}
+function turnStart(){
+  render();
+  saveGame();
+  if (!G.winner && computerTurn()) askComputer();
+}
+
+/* ---------- page text ---------- */
+function render(){
+  const st = $('status'), dot = c => `<span class="dot" style="background:var(--${c === 1 ? 'red' : 'blue'})"></span>`;
+  st.classList.toggle('over', !!G.winner);
+  let msg;
+  if (G.winner === 3) msg = 'The board is full. A draw.';
+  else if (G.winner) msg = dot(G.winner) + (!G.human ? `${NAME[G.winner]} wins` : G.winner === G.human ? 'You win' : 'The computer wins');
+  else {
+    const n = G.flash ? ` ${NAME[G.flash.who]} turned ${G.flash.n}.` : '';
+    const who = computerTurn() ? 'The computer is thinking…' : !G.human ? `${NAME[G.turn]} to play` : 'Your turn';
+    msg = dot(G.turn) + who + (G.left === 2 ? ' (two buttons)' : '') + n;
+  }
+  st.innerHTML = msg;
+  for (const c of [1, 2]){
+    const label = G.human ? (c === G.human ? 'You' : 'Computer') : `Player ${c}`;
+    $(c === 1 ? 'infoRed' : 'infoBlue').textContent = `${label} · ${stones(c)} on board · ${G.turned[c]} turned`;
+    $(c === 1 ? 'sideRed' : 'sideBlue').classList.toggle('turn', !G.winner && G.turn === c);
+  }
+  $('btnUndo').disabled = !!G.winner || !G.history.length || (G.human && !G.history.some(h => h.turn === G.human));
+  $('btnNew').classList.toggle('primary', !!G.winner);
+  const t = tally[SET.opp];
+  $('tally').textContent = SET.opp === 'human' ? 'Two players share this screen.' : t ? `Against this level: you ${t.w}, computer ${t.l}` : 'Your wins are saved in this browser.';
+  draw();
+}
+
+/* ---------- drawing ---------- */
+const cv = $('board'), ctx = cv.getContext('2d');
+let S = 40, CX = 0, CY = 0, W = 0, H = 0, col = {};
+function readColors(){
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['cloth', 'cloth-deep', 'thread', 'red', 'red-hi', 'blue', 'blue-hi', 'brass', 'room-deep']) col[k] = cs.getPropertyValue('--' + k).trim();
+}
+const px = c => { const [q, r] = E.pos[c]; return [CX + S * (q + r / 2), CY + S * 0.866 * r]; };
+function resize(){
+  const wrap = $('wrap'), wide = innerWidth > 900;
+  const aw = wrap.clientWidth, ah = wide ? wrap.clientHeight : Math.max(320, innerHeight - 110);
+  S = Math.max(16, Math.min(aw / 15.4, ah / 13.4));
+  W = Math.floor(S * 15.4); H = Math.floor(S * 13.4); CX = W / 2; CY = H / 2;
+  const dpr = devicePixelRatio || 1;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+  draw();
+}
+function drawButton(x, y, r, c, sealed, sx = 1){
+  ctx.save(); ctx.translate(x, y); ctx.scale(sx, 1);
+  ctx.fillStyle = 'rgba(40,30,15,.38)';
+  ctx.beginPath(); ctx.arc(1.5, r * .16, r, 0, 7); ctx.fill();
+  const base = col[c === 1 ? 'red' : 'blue'], hi = col[c === 1 ? 'red-hi' : 'blue-hi'];
+  const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .1, 0, 0, r * 1.05);
+  g.addColorStop(0, hi); g.addColorStop(.6, base); g.addColorStop(1, base);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = Math.max(1, r * .1);
+  ctx.beginPath(); ctx.arc(0, 0, r * .72, 0, 7); ctx.stroke();
+  const h = r * .24;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  for (const [a, b] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ ctx.beginPath(); ctx.arc(a * h, b * h, r * .085, 0, 7); ctx.fill(); }
+  if (sealed){
+    ctx.strokeStyle = col.brass; ctx.lineWidth = Math.max(1.6, r * .15); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-h, -h); ctx.lineTo(h, h); ctx.moveTo(h, -h); ctx.lineTo(-h, h); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r - ctx.lineWidth / 2, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+function draw(){
+  if (!G || !W) return;
+  ctx.clearRect(0, 0, W, H);
+  const r = S * 0.43, R = S * 7.62, now = performance.now();
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++){ const a = Math.PI / 3 * k; const x = CX + R * Math.cos(a), y = CY + R * Math.sin(a); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.closePath();
+  ctx.fillStyle = col.cloth; ctx.fill();
+  ctx.lineJoin = 'round'; ctx.lineWidth = S * .14; ctx.strokeStyle = col['cloth-deep']; ctx.stroke();
+  // stitched lines through every row, in all three directions
+  ctx.strokeStyle = col.thread; ctx.lineWidth = Math.max(1, S * .035); ctx.setLineDash([S * .13, S * .09]);
+  for (const c of E.cells) for (let d = 0; d < 3; d++){
+    const n = E.NEXT[c * 6 + d]; if (n < 0) continue;
+    const [x1, y1] = px(c), [x2, y2] = px(n);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  const hid = new Map();
+  for (const a of anim) if (now < a.t0 || now < a.t0 + 320) hid.set(a.c, a);
+  for (const c of E.cells){
+    const v = G.board[c]; if (!v) continue;
+    const [x, y] = px(c), a = hid.get(c);
+    if (a && a.kind === 'flip'){
+      const u = Math.max(0, Math.min(1, (now - a.t0) / 320));
+      drawButton(x, y, r, u < .5 ? a.from : a.col, u >= .5 && G.sealed[c], Math.max(.08, Math.abs(Math.cos(u * Math.PI))));
+    } else if (a && a.kind === 'drop'){
+      const u = Math.max(0, Math.min(1, (now - a.t0) / 200));
+      drawButton(x, y - (1 - u) * S * .5, r * (1.15 - .15 * u), v, G.sealed[c]);
+    } else drawButton(x, y, r, v, G.sealed[c]);
+  }
+  if (G.last != null && !G.winner){
+    const [x, y] = px(G.last);
+    ctx.strokeStyle = col.brass; ctx.lineWidth = Math.max(2, S * .06);
+    ctx.beginPath(); ctx.arc(x, y, r * .28, 0, 7); ctx.stroke();
+  }
+  for (const c of G.line){
+    const [x, y] = px(c);
+    ctx.strokeStyle = col['room-deep']; ctx.lineWidth = Math.max(3, S * .1);
+    ctx.beginPath(); ctx.arc(x, y, r + S * .05, 0, 7); ctx.stroke();
+    ctx.strokeStyle = col.brass; ctx.lineWidth = Math.max(2, S * .06);
+    ctx.beginPath(); ctx.arc(x, y, r + S * .05, 0, 7); ctx.stroke();
+  }
+  // mouse preview: where the button lands and which two it would turn
+  if (hover != null && canPlay() && !G.board[hover]){
+    const [x, y] = px(hover);
+    ctx.globalAlpha = .55; drawButton(x, y, r, G.turn, 0); ctx.globalAlpha = 1;
+    ctx.strokeStyle = col.brass; ctx.lineWidth = Math.max(2, S * .06); ctx.setLineDash([S * .1, S * .08]);
+    for (const f of E.flipsAt(G.board, G.sealed, hover, G.turn)){ const [fx, fy] = px(f); ctx.beginPath(); ctx.arc(fx, fy, r + S * .04, 0, 7); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+}
+function kick(){
+  if (rafOn) return;
+  rafOn = true;
+  const tick = () => {
+    anim = anim.filter(a => performance.now() < a.t0 + 340);
+    draw();
+    if (anim.length) requestAnimationFrame(tick); else rafOn = false;
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ---------- input ---------- */
+const canPlay = () => G && !G.winner && !computerTurn();
+function cellAt(e){
+  const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  let best = null, bd = (S * .62) ** 2;
+  for (const c of E.cells){ const [cx, cy] = px(c), d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd){ bd = d; best = c; } }
+  return best;
+}
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const c = cellAt(e);
+  if (c !== hover){ hover = c; draw(); }
+});
+cv.addEventListener('pointerleave', () => { if (hover != null){ hover = null; draw(); } });
+cv.addEventListener('click', e => {
+  if (!canPlay()) return;
+  const c = cellAt(e);
+  if (c != null && !G.board[c]) place(c);
+});
+$('btnUndo').onclick = undo;
+$('btnNew').onclick = newGame;
+$('optOpp').value = SET.opp; $('optSide').value = SET.side;
+$('optOpp').onchange = e => { SET.opp = e.target.value; saveSet(); render(); };
+$('optSide').onchange = e => { SET.side = e.target.value; saveSet(); };
+new ResizeObserver(resize).observe($('wrap'));
+addEventListener('resize', resize);
+
+/* ---------- boot (keeps a game in progress across page updates and reloads) ---------- */
+const validSave = g => g && Array.isArray(g.board) && g.board.length === E.NC && Array.isArray(g.sealed) && Array.isArray(g.history);
+function start(data){
+  readColors();
+  if (innerWidth <= 900) $('rulesBox').open = false;
+  const saved = data && data.G ? data.G : store.get('turncoat-game', null);
+  if (validSave(saved)){ G = saved; resize(); turnStart(); }
+  else { newGame(); resize(); }
+}
+window.claude?.hot?.snapshot?.(snapshot);
+addEventListener('pagehide', saveGame);
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
