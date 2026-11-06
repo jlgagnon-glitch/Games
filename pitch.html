@@ -1,0 +1,804 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Pitch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Libre+Bodoni:wght@700&family=Nanum+Pen+Script&family=Rye&display=swap">
+<style>
+/* Layout: a tavern card table. Oxblood felt and brass in the middle, a yellow score pad and house rules beside it. One deliberate dark look. */
+:root{
+  --room:#170e10; --felt:#5c2027; --felt-deep:#371117; --rail:#2b1a14; --panel:#231518; --line:#3d262b;
+  --brass:#d6ab52; --brass-dim:#8a6c33;
+  --card:#f7f0e1; --card-edge:#d6c9ae; --ink:#1e1716; --red:#b4231c;
+  --text:#f1e6d6; --muted:#c3ae99;
+  --pad:#f4eab8; --pad-line:#a9bcd8; --pad-margin:#d98080; --pencil:#2c3140;
+  --good:#93d48f; --bad:#ff9282; --shade:rgba(10,4,5,.45);
+  --f-display:"Rye", Georgia, serif;
+  --f-body:"Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-card:"Libre Bodoni", Georgia, "Times New Roman", serif;
+  --f-hand:"Nanum Pen Script", "Bradley Hand", "Comic Sans MS", cursive;
+  --cw:clamp(50px, 6.2vw, 84px); --ch:calc(var(--cw) * 1.4);
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}   /* hidden panels must never cover the table, even outside the viewer */
+table{color:inherit; font-size:inherit; font-weight:inherit; font-style:inherit; line-height:inherit}   /* opened as a plain file, Chrome would otherwise give tables its default text color */
+body{background:var(--room); color:var(--text); font-family:var(--f-body); font-size:15px; line-height:1.4}
+*{box-sizing:border-box}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+
+.app{height:100%; display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:16px;
+  padding-block:12px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.main{display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0}
+
+header.top{display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap}
+.brand{display:flex; flex-direction:column; line-height:1}
+.brand b{font-family:var(--f-display); font-weight:400; font-size:30px; color:var(--brass); letter-spacing:.05em}
+.brand span{font-size:11px; text-transform:uppercase; letter-spacing:.18em; color:var(--muted); margin-top:4px}
+.scores{display:flex; gap:6px; flex-wrap:wrap; margin-left:auto}
+.chip{display:flex; align-items:baseline; gap:8px; padding:5px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); font-variant-numeric:tabular-nums}
+.chip .n{font-weight:600}
+.chip .s{font-size:20px; font-weight:700; color:var(--brass)}
+.chip .tags{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em}
+.chip.lead .s{color:var(--good)}
+
+.table{flex:1; min-height:500px; position:relative; border-radius:30px; border:10px solid var(--rail);
+  background:radial-gradient(ellipse at 50% 42%, var(--felt) 0%, var(--felt-deep) 88%);
+  box-shadow:inset 0 0 70px var(--shade), 0 0 0 1px var(--brass-dim);
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2.3fr) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto; grid-template-areas:". north ." "west center east" "south south south";
+  padding:12px; gap:6px}
+
+.seat{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; min-width:0}
+.seat.n1{grid-area:west} .seat.n2{grid-area:north} .seat.n3{grid-area:east}
+.plate{font-weight:600; background:var(--shade); padding:3px 12px; border-radius:999px; border:1px solid transparent; white-space:nowrap; transition:border-color .2s, box-shadow .2s}
+.plate.turn{border-color:var(--brass); box-shadow:0 0 14px var(--brass-dim)}
+.plate small{font-weight:500; color:var(--brass); margin-left:6px}
+.backs{display:flex; padding-left:calc(var(--cw) * .38); min-height:calc(var(--ch) * .55)}
+.back{width:calc(var(--cw) * .55); height:calc(var(--ch) * .55); margin-left:calc(var(--cw) * -.38); border-radius:5px; border:2px solid var(--card);
+  background:repeating-linear-gradient(45deg, var(--brass-dim) 0 3px, var(--felt-deep) 3px 7px); box-shadow:0 1px 3px var(--shade)}
+.bubble{min-height:1.4em; font-size:14px; font-weight:600; color:var(--brass); text-align:center}
+
+.center{grid-area:center; position:relative; min-height:calc(var(--ch) * 2.7)}
+.trumpmark{position:absolute; inset:0; display:grid; place-items:center; font-size:calc(var(--ch) * 1.7); color:var(--text); opacity:.06; pointer-events:none; font-family:var(--f-card)}
+.slot{position:absolute; transform:translate(-50%,-50%)}
+.slot.s0{left:50%; top:70%} .slot.s1{left:24%; top:48%} .slot.s2{left:50%; top:26%} .slot.s3{left:76%; top:48%}
+.slot .card{animation:land .25s ease-out}
+.status{position:absolute; left:0; right:0; top:0; text-align:center; font-size:13px; color:var(--muted)}
+.status b{color:var(--brass); font-weight:600}
+
+.south{grid-area:south; display:flex; flex-direction:column; align-items:center; gap:8px}
+.prompt{font-weight:600; text-align:center; min-height:1.4em}
+.actions{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; align-items:center; min-height:38px}
+.hand{display:flex; gap:6px; justify-content:center; padding-top:14px}
+.me{display:flex; align-items:center; gap:10px}
+
+.btn{background:var(--brass); color:var(--ink); border:0; border-radius:6px; padding:8px 14px; font-weight:700; cursor:pointer; letter-spacing:.02em}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.4; cursor:default; filter:none}
+.btn.ghost{background:transparent; color:var(--text); border:1px solid var(--brass-dim)}
+.btn.suit{background:var(--card); color:var(--ink); font-family:var(--f-card); font-size:20px; padding:4px 14px; min-width:56px}
+.btn.suit.red{color:var(--red)}
+.btn.suit small{display:block; font-family:var(--f-body); font-size:11px; font-weight:600}
+
+.card{width:var(--cw); height:var(--ch); background:var(--card); border-radius:calc(var(--cw) * .09); border:1px solid var(--card-edge);
+  color:var(--ink); position:relative; box-shadow:0 2px 5px var(--shade); font-family:var(--f-card); flex:none; padding:0; display:block;
+  transition:transform .15s ease, filter .15s ease, box-shadow .15s}
+.card.red{color:var(--red)}
+.card .idx{position:absolute; top:5%; left:8%; line-height:.92; font-size:calc(var(--cw) * .25); text-align:center; font-weight:700}
+.card .idx span{display:block; font-size:.82em}
+.card .idx.br{top:auto; left:auto; bottom:5%; right:8%; transform:rotate(180deg)}
+.card .pip{position:absolute; inset:0; display:grid; place-items:center; font-size:calc(var(--cw) * .48)}
+.card .pip.face{font-size:calc(var(--cw) * .5); font-weight:700}
+.card.joker{background:linear-gradient(160deg, var(--card) 55%, var(--pad) 100%)}
+.card.joker .jk{position:absolute; top:6%; left:7%; writing-mode:vertical-rl; font-size:calc(var(--cw) * .14); letter-spacing:.12em; font-weight:700; color:var(--red)}
+.card.joker .pip{color:var(--brass-dim)}
+.card .tag{position:absolute; left:50%; bottom:-9px; transform:translateX(-50%); background:var(--brass); color:var(--ink); font-family:var(--f-body); font-size:10px; font-weight:700; letter-spacing:.1em; padding:0 5px; border-radius:3px}
+button.card{cursor:pointer}
+button.card.legal:hover{transform:translateY(-8px)}
+.card.dim{filter:brightness(.55) saturate(.5); cursor:default}
+.card.sel{transform:translateY(-14px); box-shadow:0 0 0 3px var(--bad), 0 4px 10px var(--shade)}
+.card.sel::after{content:"OUT"; position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-family:var(--f-body); font-size:11px; font-weight:700; color:var(--bad); letter-spacing:.1em}
+.card.fresh{box-shadow:0 0 0 2px var(--good), 0 2px 5px var(--shade)}
+.card.win{box-shadow:0 0 0 3px var(--brass), 0 0 22px var(--brass)}
+
+.overlay{position:absolute; inset:0; display:grid; place-items:center; background:var(--shade); border-radius:20px; z-index:5; padding:12px}
+.result{background:var(--card); color:var(--ink); border-radius:12px; padding:20px 22px; width:min(440px, 100%); box-shadow:0 10px 40px var(--shade); max-height:100%; overflow:auto}
+.result h2{font-family:var(--f-display); font-weight:400; font-size:24px; margin:0 0 4px; text-wrap:balance; color:var(--felt)}
+.result .sub{color:var(--brass-dim); font-weight:600; margin-bottom:12px}
+.result table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+.result td,.result th{padding:5px 4px; border-bottom:1px solid var(--card-edge); text-align:left; vertical-align:top}
+.result th{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--brass-dim)}
+.result td.num{text-align:right; font-weight:700}
+.result .red{color:var(--red)}
+.result .pos{color:#2f7a35} .result .neg{color:var(--red)}
+.result .row-actions{display:flex; justify-content:flex-end; margin-top:14px}
+
+.side{display:flex; flex-direction:column; gap:14px; overflow-y:auto; overflow-x:hidden; min-height:0; padding-bottom:6px}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px}
+.panel h3{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:600}
+.track{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+.track td{padding:3px 0; border-bottom:1px dashed var(--line)}
+.track td:first-child{color:var(--muted); width:64px}
+.track td:last-child{text-align:right}
+.track .w{color:var(--brass); font-weight:600}
+.minitrick{display:flex; gap:6px; --cw:38px}
+.minitrick figure{margin:0; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; color:var(--muted)}
+.minitrick .card{box-shadow:none}
+.minitrick .win{box-shadow:0 0 0 2px var(--brass)}
+
+.pad{background-color:var(--pad); color:var(--pencil); border-radius:4px; font-family:var(--f-hand); font-size:22px; line-height:28px; padding:6px 10px 10px 34px; position:relative;
+  background-image:linear-gradient(to right, transparent 26px, var(--pad-margin) 26px, var(--pad-margin) 27px, transparent 27px), linear-gradient(transparent 27px, var(--pad-line) 27px);
+  background-size:100% 100%, 100% 28px; box-shadow:0 3px 10px var(--shade); transform:rotate(-.6deg)}
+.pad table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+.pad th{font-weight:400; text-align:right}
+.pad td{text-align:right}
+.pad td:first-child,.pad th:first-child{text-align:left}
+.pad .neg{color:var(--red)}
+.pad .tot td{border-top:2px solid var(--pencil)}
+.pad .empty{color:var(--pencil); opacity:.6}
+
+.log{list-style:none; margin:0; padding:0; font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:3px; max-height:160px; overflow:auto}
+.log li:first-child{color:var(--text)}
+details.panel summary{cursor:pointer; font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:600}
+details.panel[open] summary{margin-bottom:8px}
+.rules{font-size:13.5px; color:var(--text); padding-left:18px; margin:0; display:flex; flex-direction:column; gap:4px}
+.rules b{color:var(--brass)}
+.field{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; font-size:14px}
+.field select{background:var(--room); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font:inherit}
+
+@keyframes land{from{transform:scale(1.15); opacity:.2}to{transform:none; opacity:1}}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important; transition:none!important} }
+
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{grid-template-columns:minmax(0,1fr); height:auto}
+  .table{min-height:590px}
+  .side{overflow:visible}
+}
+@media (max-width:480px){
+  :root{--cw:46px}
+  .brand b{font-size:24px}
+  .table{border-width:7px; padding:8px; border-radius:22px}
+  .chip{padding:4px 8px; gap:5px}
+  .chip .s{font-size:17px}
+  .plate{padding:2px 8px; font-size:13px}
+}
+</style>
+
+<div class="app" id="app">
+  <div class="main">
+    <header class="top">
+      <div class="brand"><b>PITCH</b><span>High · Low · Jack · Joker · Game</span></div>
+      <div class="scores" id="scores"></div>
+    </header>
+    <div class="table" id="table">
+      <div class="seat n2" id="seat2"></div>
+      <div class="seat n1" id="seat1"></div>
+      <div class="seat n3" id="seat3"></div>
+      <div class="center" id="center"></div>
+      <div class="south" id="south"></div>
+      <div class="overlay" id="overlay" hidden></div>
+    </div>
+  </div>
+  <aside class="side">
+    <section class="panel"><h3>This hand</h3><div id="track"></div></section>
+    <section class="panel"><h3>Last trick</h3><div id="lasttrick"></div></section>
+    <section class="pad" aria-label="Score pad"><div id="pad"></div></section>
+    <section class="panel"><h3>Table talk</h3><ul class="log" id="log"></ul></section>
+    <details class="panel">
+      <summary>House rules</summary>
+      <ul class="rules">
+        <li>Six cards each, 53-card deck with one <b>joker</b>. You play against three computers, every player for themselves.</li>
+        <li>Bidding goes once around, starting left of the dealer. Minimum bid is 3 (because of the draw), maximum 6. The <b>dealer</b> may take the high bid at the same number. If everyone passes, the dealer is stuck at 3.</li>
+        <li>The bidder names trump. Then everyone, starting left of the dealer, may throw out any non-trump cards and <b>draw</b> back to six.</li>
+        <li>The bidder leads first. You must follow trump when trump is led. On a non-trump lead you must follow suit or trump; you may only throw off when you have neither.</li>
+        <li>The joker is a trump that ranks <b>below the 2</b>.</li>
+        <li><b>High</b> 1, <b>Low</b> 1, <b>Jack</b> of trump 1, <b>Joker</b> 2, <b>Game</b> 1. Six points in all. High and low go to the player who played them (see settings for low). Jack and joker go to whoever takes the trick.</li>
+        <li>Game counts captured cards: ten 10, ace 4, king 3, queen 2, jack 1. A tie for most game gives no point.</li>
+        <li>Make your bid and you score everything you took. Miss it and you lose the bid. Everyone else scores what they took. If the bidder reaches the target, the bidder goes out first.</li>
+      </ul>
+    </details>
+    <details class="panel">
+      <summary>Settings</summary>
+      <div class="field"><label for="optTarget">Play to</label>
+        <select id="optTarget"><option value="11">11</option><option value="15">15</option><option value="21">21</option></select></div>
+      <div class="field"><label for="optLow">Low point goes to</label>
+        <select id="optLow"><option value="holder">Player who played it</option><option value="capture">Player who took it</option></select></div>
+      <div class="field"><label for="optSpeed">Computer speed</label>
+        <select id="optSpeed"><option value="normal">Normal</option><option value="fast">Fast</option></select></div>
+      <button class="btn ghost" id="newGame" type="button">Start a new game</button>
+    </details>
+  </aside>
+</div>
+
+<script>
+/* ---------- cards ---------- */
+const MIN_BID = 3;          // lowest bid allowed; 3 because the draw makes hands stronger
+const SUITS = ['S','H','D','C'];
+const SYM = {S:'♠︎', H:'♥︎', D:'♦︎', C:'♣︎', X:'★'};
+const SNAME = {S:'Spades', H:'Hearts', D:'Diamonds', C:'Clubs'};
+const NAMES = ['You','Marv','Bev','Duane'];
+const RL = r => ({11:'J',12:'Q',13:'K',14:'A'}[r] || String(r));
+const DECK = [];
+for (const s of SUITS) for (let r = 2; r <= 14; r++) DECK.push({id: RL(r) + s, s, r});
+DECK.push({id:'JK', s:'X', r:1});                       // joker: rank 1, below the 2
+const CARD = Object.fromEntries(DECK.map(c => [c.id, c]));
+const isRed = c => c.s === 'H' || c.s === 'D';
+const cardName = c => c.s === 'X' ? 'Joker' : RL(c.r) + SYM[c.s];
+const isT = (c, t) => c.s === t || c.s === 'X';
+const eff = (c, t) => isT(c, t) ? 'T' : c.s;
+const pips = c => c.s === 'X' ? 0 : ({10:10, 14:4, 13:3, 12:2, 11:1}[c.r] || 0);
+const V = (p, s, pl) => p === 0 ? pl : s;              // "Bev takes" / "You take"
+
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const minBy = (a, f) => a.reduce((b, x) => f(x) < f(b) ? x : b);
+const maxBy = (a, f) => a.reduce((b, x) => f(x) > f(b) ? x : b);
+
+/* ---------- rules ---------- */
+function trickWinner(trick, t){
+  let best = trick[0];
+  for (let i = 1; i < trick.length; i++){
+    const a = trick[i].c, b = best.c, aT = isT(a, t), bT = isT(b, t);
+    if (aT && !bT) best = trick[i];
+    else if (aT && bT){ if (a.r > b.r) best = trick[i]; }
+    else if (!aT && !bT && a.s === b.s && a.r > b.r) best = trick[i];
+  }
+  return best.p;
+}
+function legal(hand, trick, t){
+  if (!trick.length) return hand.slice();
+  const led = eff(trick[0].c, t);
+  if (led === 'T'){ const tr = hand.filter(c => isT(c, t)); return tr.length ? tr : hand.slice(); }
+  if (hand.some(c => !isT(c, t) && c.s === led)) return hand.filter(c => isT(c, t) || c.s === led);
+  return hand.slice();
+}
+function scoreHand(tricks, t, lowRule){
+  const pts = [0,0,0,0], pip = [0,0,0,0];
+  const bd = {high:null, low:null, jack:null, joker:null, game:null, pips:pip};
+  for (const tr of tricks) for (const pl of tr.plays){
+    const c = pl.c;
+    pip[tr.w] += pips(c);
+    if (c.s === 'X') bd.joker = {p:tr.w, from:pl.p, c};
+    else if (c.s === t){
+      if (!bd.high || c.r > bd.high.c.r) bd.high = {p:pl.p, c};
+      if (!bd.low || c.r < bd.low.c.r) bd.low = {p: lowRule === 'capture' ? tr.w : pl.p, c};
+      if (c.r === 11) bd.jack = {p:tr.w, from:pl.p, c};
+    }
+  }
+  if (bd.high) pts[bd.high.p]++;
+  if (bd.low) pts[bd.low.p]++;
+  if (bd.jack) pts[bd.jack.p]++;
+  if (bd.joker) pts[bd.joker.p] += 2;
+  const mx = Math.max(...pip), ws = [0,1,2,3].filter(i => pip[i] === mx);
+  if (mx > 0 && ws.length === 1){ pts[ws[0]]++; bd.game = {p:ws[0]}; }
+  else bd.game = {p:null, tie: mx > 0};
+  return {pts, bd};
+}
+const deltas = (pts, bidder, bid) => pts.map((x, i) => i === bidder ? (x >= bid ? x : -bid) : x);
+function checkWinner(scores, bidder, made, target){
+  if (made && scores[bidder] >= target) return bidder;   // bidder goes out first
+  const over = [0,1,2,3].filter(i => scores[i] >= target);
+  if (!over.length) return null;
+  const mx = Math.max(...over.map(i => scores[i]));
+  const top = over.filter(i => scores[i] === mx);
+  return top.length === 1 ? top[0] : null;
+}
+
+/* ---------- computer play ----------
+   A fast rule-of-thumb policy plays out simulated hands. Real decisions use
+   Monte Carlo search: deal the unseen cards many ways that fit what has been
+   observed (voids, how many cards each player kept in the draw, the bid),
+   play each candidate card out to the end, and pick the best average result. */
+const BID_SIMS = 300;      // imaginary deals per bid decision (each tried in all four suits)
+const PLAY_WORLDS = 240;   // guessed deals per card decision
+const cval = (c, t) => c.s === 'X' ? 20 : ((c.s === t && c.r === 11) ? 10 : 0) + pips(c) * 0.8;
+function dcost(c, t, lr){
+  let v = cval(c, t);
+  if (isT(c, t)){ v += 4 + c.r * 0.5; if (lr === 'capture' && c.s === t && c.r === 2) v += 8; }
+  else v += c.r * 0.15;
+  return v;
+}
+function policy(S, p){
+  const t = S.t, hand = S.hands[p], trick = S.trick;
+  const L = legal(hand, trick, t);
+  if (L.length === 1) return L[0];
+  const out = S.trumps.filter(c => !S.played.has(c.id) && !hand.includes(c));
+  const cost = c => dcost(c, t, S.lowRule);
+  const noTrump = o => S.voids[o].includes('T');
+  // Can any of `players` still beat card c? Uses outstanding cards and known voids.
+  const unbeatable = (c, players) => {
+    if (!players.length) return true;
+    if (isT(c, t)) return players.every(noTrump) || !out.some(o => o.r > c.r);
+    if (out.length && players.some(o => !noTrump(o))) return false;
+    return players.every(o => S.voids[o].includes(c.s)) ||
+      !S.cards.some(o => o.s === c.s && o.r > c.r && !S.played.has(o.id) && !hand.includes(o));
+  };
+  if (!trick.length){
+    const opps = [1,2,3].map(i => (p + i) % 4);
+    const myT = L.filter(c => isT(c, t)).sort((a, b) => b.r - a.r);
+    const oppsHoldTrump = out.length > 0 && opps.some(o => !noTrump(o));
+    if (myT.length && oppsHoldTrump && unbeatable(myT[0], opps)) return myT[0];      // pull trump with a sure winner
+    const offs = L.filter(c => !isT(c, t));
+    const cash = offs.filter(c => unbeatable(c, opps));
+    if (cash.length) return maxBy(cash, c => pips(c) + c.r * 0.01);                // cash a safe off-suit winner
+    return minBy(offs.length ? offs : L, cost);
+  }
+  const after = []; for (let i = 1; i < 4 - trick.length; i++) after.push((p + i) % 4);
+  const tv = trick.reduce((s, x) => s + cval(x.c, t), 0);
+  const wP = trickWinner(trick, t), wc = trick.find(x => x.p === wP).c;
+  const W = L.filter(c => trickWinner(trick.concat({p, c}), t) === p);
+  if (W.length){
+    if (!after.length){
+      const best = maxBy(W, c => cval(c, t) - (isT(c, t) ? c.r * 0.4 : 0));
+      if (tv + cval(best, t) > 0) return best;
+      const cheap = minBy(W, cost), dump = minBy(L, cost);
+      return cost(cheap) <= cost(dump) + 1 ? cheap : dump;
+    }
+    const safe = W.filter(c => unbeatable(c, after));
+    if (safe.length){
+      const s = maxBy(safe, c => cval(c, t) - (isT(c, t) ? 2 + c.r * 0.2 : 0));
+      if (tv + cval(s, t) >= 3 || !isT(s, t)) return s;
+    }
+    if (tv >= 8){ const strong = maxBy(W, c => (isT(c, t) ? 100 : 0) + c.r); if (cval(strong, t) < 10) return strong; }
+  }
+  // Not winning. Defenders feed game cards onto another defender's sure trick.
+  if (p !== S.bidder && wP !== S.bidder && unbeatable(wc, after)){
+    const feed = L.filter(c => !isT(c, t) && pips(c) > 0);
+    if (feed.length) return maxBy(feed, pips);
+  }
+  return minBy(L, cost);
+}
+function simulate(S, first){
+  let mv = first;
+  for (;;){
+    const p = S.turn, hand = S.hands[p];
+    if (!hand.length && !S.trick.length) break;
+    const c = mv || policy(S, p); mv = null;
+    if (S.trick.length){                                  // record voids the same way the real table does
+      const led = eff(S.trick[0].c, S.t);
+      if (led === 'T'){ if (!isT(c, S.t) && !S.voids[p].includes('T')) S.voids[p].push('T'); }
+      else if (!isT(c, S.t) && c.s !== led){ if (!S.voids[p].includes(led)) S.voids[p].push(led); if (!S.voids[p].includes('T')) S.voids[p].push('T'); }
+    }
+    hand.splice(hand.indexOf(c), 1);
+    S.trick.push({p, c}); S.played.add(c.id);
+    if (S.trick.length === 4){ const w = trickWinner(S.trick, S.t); S.tricks.push({plays:S.trick, w}); S.trick = []; S.turn = w; }
+    else S.turn = (p + 1) % 4;
+  }
+}
+
+// Rough bidding strength of a hand in its best suit, about "points I expect as bidder".
+const STRENGTH = {14:1.0, 13:0.45, 12:0.2, 11:0.75, 10:0.3, 3:0.35, 2:0.5};
+function suitStrength(hand, s){ let v = 0.6; for (const c of hand) if (isT(c, s)) v += c.s === 'X' ? 1.3 : (STRENGTH[c.r] || 0.12); return v; }
+const bestStrength = h => Math.max(...SUITS.map(s => suitStrength(h, s)));
+// Chance that a hand of strength st bids when it must bid at least `need`.
+// Fitted to about 30,000 recorded computer bidding decisions.
+const pBid = (st, need) => 1 / (1 + Math.exp(-5 * (st - (1.5 + 0.8 * (need - 2)))));
+// How believable is this guessed hand for player o, given how o bid?
+function bidFit(hand, o){
+  const b = G.bids[o];
+  if (b == null) return 1;                                // hasn't bid yet
+  const st = bestStrength(hand);
+  const like = b > 0 ? pBid(st, b) : 1 - pBid(st, G.bidNeed[o]);
+  return Math.max(0.03, like);
+}
+// Estimate points p would take as bidder in each suit, simulating the deal of
+// unseen cards (shaped by the bids so far), the draw, and the play.
+function evalHand(p, hand, dealer, sims){
+  const res = {S:[], H:[], D:[], C:[]};
+  const rest0 = DECK.filter(c => !hand.includes(c));
+  const others = [0,1,2,3].filter(o => o !== p);
+  for (let i = 0; i < sims; i++){
+    let hands, deck;
+    for (let tries = 0; tries < 30; tries++){
+      const rest = shuffle(rest0.slice());
+      hands = [[],[],[],[]]; let k = 0;
+      for (const o of others){ hands[o] = rest.slice(k, k + 6); k += 6; }
+      hands[p] = hand.slice(); deck = rest.slice(k);
+      let fit = 1; for (const o of others) fit *= bidFit(hands[o], o);
+      if (Math.random() < fit) break;
+    }
+    for (const s of SUITS){
+      const hs = hands.map(h => h.slice()), dk = deck.slice();
+      for (let j = 1; j <= 4; j++){
+        const o = (dealer + j) % 4, keep = hs[o].filter(c => isT(c, s));
+        hs[o] = keep.concat(dk.splice(0, 6 - keep.length));
+      }
+      const S = {hands:hs, trick:[], t:s, played:new Set(), tricks:[], turn:p, bidder:p, lowRule:G.lowRule,
+                 voids:[[],[],[],[]], cards:hs.flat(), trumps:hs.flat().filter(c => isT(c, s))};
+      simulate(S, null);
+      res[s].push(scoreHand(S.tricks, s, G.lowRule).pts[p]);
+    }
+  }
+  return res;
+}
+function aiBid(p){
+  const isD = p === G.dealer;
+  const need = isD ? Math.max(MIN_BID, G.highBid) : Math.max(MIN_BID, G.highBid + 1);
+  if (need > 6) return 0;
+  const ev = evalHand(p, G.hands[p], G.dealer, BID_SIMS);
+  const EV = (s, b) => { let x = 0; for (const v of ev[s]) x += v >= b ? v : -b; return x / ev[s].length; };
+  const bestAt = b => { let bs = null, bv = -1e9; for (const s of SUITS){ const v = EV(s, b); if (v > bv){ bv = v; bs = s; } } return [bs, bv]; };
+  const tgt = G.target, me = G.scores[p];
+  const threat = Math.max(...[0,1,2,3].filter(o => o !== p).map(o => G.scores[o]));
+  let thr = 0.4;                                          // about what passing is worth (tuned in test games)
+  if (threat >= tgt - 4) thr -= 0.5;                      // someone is close: get aggressive
+  if (G.highBidder != null && G.scores[G.highBidder] + G.highBid >= tgt) thr -= 1.2;  // stop them going out
+  if (me + need >= tgt) thr -= 0.4;                       // a chance to go out
+  thr += (Math.random() - 0.5) * 0.3;                     // a little unpredictability
+  const forced = isD && G.highBid === 0;
+  const [s0, v0] = bestAt(need);
+  if (!forced && v0 < thr) return 0;
+  let bid = need, suit = s0;
+  if (!isD){                                              // jump-bid to shut others out when the hand can afford it
+    for (let b = need + 1; b <= 6; b++){
+      const [s, v] = bestAt(b);
+      if (v >= v0 - 0.2 && v >= thr + 0.3){ bid = b; suit = s; } else break;
+    }
+  }
+  G.planned[p] = suit;
+  return bid;
+}
+function sampleWorld(p){
+  const t = G.trump;
+  const known = new Set([...G.hands[p].map(c => c.id), ...G.played, ...G.discards[p].map(c => c.id)]);
+  const pool = DECK.filter(c => !known.has(c.id));
+  const others = [0,1,2,3].filter(o => o !== p).sort((a, b) => G.voids[b].length - G.voids[a].length);
+  for (let att = 0; att < 40; att++){
+    shuffle(pool);
+    const used = new Set(), H = {};
+    const useSlots = att < 20, useVoids = att < 35;
+    // cards kept through the draw are mostly trump; the bidder's are mostly high trump
+    for (const o of others){
+      H[o] = [];
+      if (!useSlots || G.voids[o].includes('T')) continue;
+      let slots = Math.min(G.hands[o].length, Math.max(0, G.kept[o] - G.trumpsPlayed[o]));
+      let cands = pool.filter(c => isT(c, t) && !used.has(c.id));
+      // the bigger the bid, the more surely the bidder holds the top trumps
+      if (o === G.bidder) cands = cands.map(c => ({c, k:c.r + Math.random() * (12 - 1.5 * G.bid)})).sort((a, b) => b.k - a.k).map(x => x.c);
+      for (const c of cands){ if (slots <= 0) break; H[o].push(c); used.add(c.id); slots--; }
+    }
+    let ok = true;
+    for (const o of others){
+      for (const c of pool){
+        if (H[o].length >= G.hands[o].length) break;
+        if (used.has(c.id) || (useVoids && G.voids[o].includes(eff(c, t)))) continue;
+        H[o].push(c); used.add(c.id);
+      }
+      if (H[o].length < G.hands[o].length){ ok = false; break; }
+    }
+    if (ok) return H;
+  }
+  return null;
+}
+function utility(p, pts){
+  const d = deltas(pts, G.bidder, G.bid);
+  const ns = G.scores.map((s, i) => s + d[i]);
+  const win = checkWinner(ns, G.bidder, pts[G.bidder] >= G.bid, G.target);
+  let acc = 0, ws = 0;
+  for (let o = 0; o < 4; o++){ if (o === p) continue; const w = 1 + Math.max(0, G.scores[o] - (G.target - 8)) / 4; acc += w * d[o]; ws += w; }
+  let u = d[p] - acc / ws;
+  if (win === p) u += 12; else if (win !== null) u -= 12;
+  return u;
+}
+function aiChooseCard(p){
+  const L = legal(G.hands[p], G.trick, G.trump);
+  if (L.length === 1) return L[0];
+  const worlds = [];
+  for (let i = 0; i < PLAY_WORLDS; i++){ const w = sampleWorld(p); if (w) worlds.push(w); }
+  if (!worlds.length) return L[0];
+  let best = null, bestU = -Infinity;
+  for (const m of L){
+    let u = 0;
+    for (const H of worlds){
+      const hands = [0,1,2,3].map(o => o === p ? G.hands[p].slice() : H[o].slice());
+      const S = {hands, trick:G.trick.slice(), t:G.trump, played:new Set(G.played), tricks:G.tricks.slice(), turn:p,
+                 bidder:G.bidder, lowRule:G.lowRule, voids:G.voids.map(v => v.slice()), cards:hands.flat(),
+                 trumps:hands.flat().filter(c => isT(c, G.trump))};
+      simulate(S, m);
+      u += utility(p, scoreHand(S.tricks, G.trump, G.lowRule).pts);
+    }
+    u = u / worlds.length - dcost(m, G.trump, G.lowRule) * 0.001;   // tie-break toward the cheaper card
+    if (u > bestU){ bestU = u; best = m; }
+  }
+  return best;
+}
+
+/* ---------- settings ---------- */
+const SET = {target:21, lowRule:'holder', speed:'normal'};
+try { Object.assign(SET, JSON.parse(localStorage.getItem('pitch-settings') || '{}')); } catch (e) {}
+const saveSet = () => { try { localStorage.setItem('pitch-settings', JSON.stringify(SET)); } catch (e) {} };
+
+/* ---------- game state ---------- */
+let G;
+function addLog(s){ G.log.unshift(s); G.log.length = Math.min(G.log.length, 40); }
+function newGame(){
+  G = {scores:[0,0,0,0], target:+SET.target, dealer:Math.floor(Math.random() * 4), hand:0, history:[], log:[], winner:null};
+  newHand();
+}
+function newHand(){
+  const d = shuffle(DECK.slice());
+  Object.assign(G, {hand:G.hand + 1, phase:'bid', hands:[0,1,2,3].map(i => d.slice(i * 6, i * 6 + 6)), deck:d.slice(24),
+    bids:[null,null,null,null], bidNeed:[MIN_BID,MIN_BID,MIN_BID,MIN_BID], highBid:0, highBidder:null, bidder:null, bid:0, trump:null, planned:{},
+    bidTurn:(G.dealer + 1) % 4, drawTurn:null, drawDone:0, discards:[[],[],[],[]], kept:[6,6,6,6], fresh:[],
+    trick:[], tricks:[], lastTrick:null, turn:null, played:[], voids:[[],[],[],[]], trumpsPlayed:[0,0,0,0],
+    say:['','','',''], sel:[], result:null, lowRule:SET.lowRule});
+  addLog(`Hand ${G.hand}. ${NAMES[G.dealer]} ${V(G.dealer, 'deals', 'deal')}.`);
+}
+function applyBid(p, amt){
+  const taking = p === G.dealer && amt > 0 && amt === G.highBid;
+  G.bidNeed[p] = p === G.dealer ? Math.max(MIN_BID, G.highBid) : Math.max(MIN_BID, G.highBid + 1);
+  G.bids[p] = amt;
+  if (amt > 0){ G.highBid = amt; G.highBidder = p; G.say[p] = taking ? `Takes it at ${amt}` : `Bids ${amt}`; }
+  else G.say[p] = 'Pass';
+  addLog(`${NAMES[p]}: ${G.say[p].toLowerCase()}.`);
+  if (p === G.dealer){
+    G.bidder = G.highBidder; G.bid = G.highBid; G.phase = 'trump';
+    addLog(`${NAMES[G.bidder]} ${V(G.bidder, 'has', 'have')} the bid at ${G.bid}.`);
+  } else G.bidTurn = (p + 1) % 4;
+}
+function setTrump(s){
+  G.trump = s; G.phase = 'draw'; G.drawTurn = (G.dealer + 1) % 4;
+  G.say = ['','','',''];
+  addLog(`${NAMES[G.bidder]} ${V(G.bidder, 'names', 'name')} ${SNAME[s]} trump.`);
+}
+function doDraw(p, ids){
+  const out = G.hands[p].filter(c => ids.includes(c.id));
+  G.hands[p] = G.hands[p].filter(c => !ids.includes(c.id));
+  G.discards[p] = out; G.kept[p] = 6 - out.length;
+  const got = G.deck.splice(0, out.length);
+  G.hands[p].push(...got);
+  if (p === 0) G.fresh = got.map(c => c.id);
+  G.say[p] = out.length ? `Draws ${out.length}` : 'Stands pat';
+  addLog(`${NAMES[p]} ${out.length ? V(p, 'draws', 'draw') + ' ' + out.length : V(p, 'stands', 'stand') + ' pat'}.`);
+  G.drawDone++;
+  if (G.drawDone === 4){ G.phase = 'play'; G.turn = G.bidder; }
+  else G.drawTurn = (G.drawTurn + 1) % 4;
+}
+function addVoid(p, s){ if (!G.voids[p].includes(s)) G.voids[p].push(s); }
+function playCard(p, c){
+  const t = G.trump;
+  if (G.trick.length){
+    const led = eff(G.trick[0].c, t);
+    if (led === 'T'){ if (!isT(c, t)) addVoid(p, 'T'); }
+    else if (!isT(c, t) && c.s !== led){ addVoid(p, led); addVoid(p, 'T'); }
+  }
+  G.hands[p].splice(G.hands[p].indexOf(c), 1);
+  G.trick.push({p, c}); G.played.push(c.id);
+  if (isT(c, t)) G.trumpsPlayed[p]++;
+  G.say[p] = ''; G.fresh = [];
+  G.turn = G.trick.length < 4 ? (p + 1) % 4 : null;
+}
+function collectTrick(){
+  const w = trickWinner(G.trick, G.trump);
+  const plays = G.trick;
+  G.tricks.push({plays, w}); G.lastTrick = {plays, w};
+  const notes = plays.filter(x => x.c.s === 'X' || (x.c.s === G.trump && x.c.r === 11)).map(x => cardName(x.c));
+  addLog(`${NAMES[w]} ${V(w, 'takes', 'take')} trick ${G.tricks.length}${notes.length ? ' with the ' + notes.join(' and ') : ''}.`);
+  G.trick = []; G.turn = w;
+  if (G.tricks.length === 6) endHand();
+}
+function endHand(){
+  const {pts, bd} = scoreHand(G.tricks, G.trump, G.lowRule);
+  const made = pts[G.bidder] >= G.bid, d = deltas(pts, G.bidder, G.bid);
+  G.scores = G.scores.map((s, i) => s + d[i]);
+  G.history.push({hand:G.hand, bidder:G.bidder, bid:G.bid, trump:G.trump, d, made});
+  G.result = {pts, bd, d, made};
+  G.winner = checkWinner(G.scores, G.bidder, made, G.target);
+  G.phase = G.winner === null ? 'handEnd' : 'gameOver';
+  addLog(made ? `${NAMES[G.bidder]} made ${pts[G.bidder]} on a bid of ${G.bid}.` : `${NAMES[G.bidder]} ${V(G.bidder, 'was', 'were')} set ${G.bid}.`);
+  if (G.winner !== null) addLog(`${NAMES[G.winner]} ${V(G.winner, 'wins', 'win')} the game.`);
+}
+
+/* ---------- flow ---------- */
+let timer = null;
+function later(fn, ms){ clearTimeout(timer); timer = setTimeout(() => { fn(); step(); }, ms * (SET.speed === 'fast' ? 0.4 : 1)); }
+function step(){
+  render();
+  if (G.phase === 'bid' && G.bidTurn !== 0) later(() => applyBid(G.bidTurn, aiBid(G.bidTurn)), 800);
+  else if (G.phase === 'trump' && G.bidder !== 0) later(() => setTrump(G.planned[G.bidder] || SUITS[0]), 800);
+  else if (G.phase === 'draw' && G.drawTurn !== 0) later(() => { const p = G.drawTurn; doDraw(p, G.hands[p].filter(c => !isT(c, G.trump)).map(c => c.id)); }, 700);
+  else if (G.phase === 'play'){
+    if (G.trick.length === 4) later(collectTrick, 1300);
+    else if (G.turn !== 0 && G.turn !== null) later(() => playCard(G.turn, aiChooseCard(G.turn)), 700);
+  }
+}
+
+/* ---------- rendering ---------- */
+const $ = id => document.getElementById(id);
+function cardHTML(c, cls = '', tag = 'div', attrs = ''){
+  if (c.s === 'X') return `<${tag} class="card joker ${cls}" ${attrs} aria-label="Joker"><span class="jk">JOKER</span><span class="pip">${SYM.X}</span></${tag}>`;
+  const r = RL(c.r), face = c.r >= 11 && c.r <= 13;
+  return `<${tag} class="card ${isRed(c) ? 'red' : ''} ${cls}" ${attrs} aria-label="${r} of ${SNAME[c.s]}"><span class="idx">${r}<span>${SYM[c.s]}</span></span><span class="pip ${face ? 'face' : ''}">${face ? r : SYM[c.s]}</span><span class="idx br">${r}<span>${SYM[c.s]}</span></span></${tag}>`;
+}
+function sortHand(h){
+  const t = G.trump, order = t ? [t, ...SUITS.filter(s => s !== t)] : SUITS;
+  const key = c => isT(c, t) ? (c.s === 'X' ? 1 : c.r + 1) + 1000 : (4 - order.indexOf(c.s)) * 100 + c.r;
+  return h.slice().sort((a, b) => key(b) - key(a));
+}
+const trumpLabel = () => G.trump ? `<span class="${isRed({s:G.trump}) ? 'red' : ''}">${SYM[G.trump]}</span>` : '';
+
+function render(){
+  const lead = Math.max(...G.scores);
+  $('scores').innerHTML = G.scores.map((s, i) => {
+    const tags = [];
+    if (i === G.dealer) tags.push('dealer');
+    if (G.bidder === i) tags.push(`bid ${G.bid} ${G.trump ? SYM[G.trump] : ''}`);
+    return `<div class="chip ${s === lead && s > 0 ? 'lead' : ''}"><span class="n">${NAMES[i]}</span><span class="s">${s}</span><span class="tags">${tags.join(' · ')}</span></div>`;
+  }).join('') + `<div class="chip"><span class="tags">to ${G.target}</span></div>`;
+
+  const active = G.phase === 'bid' ? G.bidTurn : G.phase === 'trump' ? G.bidder : G.phase === 'draw' ? G.drawTurn : G.phase === 'play' ? G.turn : null;
+  for (const i of [1,2,3]){
+    $('seat' + i).innerHTML = `<div class="plate ${active === i ? 'turn' : ''}">${NAMES[i]}${i === G.dealer ? '<small>D</small>' : ''}</div>
+      <div class="backs">${G.hands[i].map(() => '<div class="back"></div>').join('')}</div>
+      <div class="bubble">${G.say[i]}</div>`;
+  }
+
+  let status = '';
+  if (G.trump) status = `<b>${SNAME[G.trump]}</b> trump · ${NAMES[G.bidder]} bid ${G.bid}`;
+  else if (G.highBid) status = `High bid <b>${G.highBid}</b> · ${NAMES[G.highBidder]}`;
+  else if (G.phase === 'bid') status = 'Bidding';
+  if (G.phase === 'draw') status += ` · ${G.deck.length} in the deck`;
+  const w = G.trick.length === 4 ? trickWinner(G.trick, G.trump) : null;
+  $('center').innerHTML = `${G.trump ? `<div class="trumpmark">${SYM[G.trump]}</div>` : ''}<div class="status">${status}</div>
+    ${G.trick.map(x => `<div class="slot s${x.p}">${cardHTML(x.c, x.p === w ? 'win' : '')}</div>`).join('')}`;
+
+  renderSouth(active);
+  renderSide();
+  renderOverlay();
+}
+
+function renderSouth(active){
+  const hand = sortHand(G.hands[0]);
+  let prompt = '', actions = '', mode = null, L = [];
+  if (G.phase === 'bid'){
+    if (G.bidTurn === 0){
+      const isD = G.dealer === 0, need = isD ? Math.max(MIN_BID, G.highBid) : Math.max(MIN_BID, G.highBid + 1);
+      prompt = isD && !G.highBid ? 'Everyone passed. As dealer you have to bid at least 3.' : isD ? `You're the dealer. You can take ${NAMES[G.highBidder]}'s bid of ${G.highBid}.` : 'Your bid.';
+      if (!(isD && !G.highBid)) actions += `<button class="btn ghost" data-bid="0" type="button">Pass</button>`;
+      for (let b = need; b <= 6; b++) actions += `<button class="btn" data-bid="${b}" type="button">${isD && b === G.highBid ? 'Take it at ' + b : 'Bid ' + b}</button>`;
+    } else prompt = `${NAMES[G.bidTurn]} is thinking…`;
+  } else if (G.phase === 'trump'){
+    if (G.bidder === 0){
+      prompt = `You have the bid at ${G.bid}. Name trump.`;
+      actions = SUITS.map(s => `<button class="btn suit ${isRed({s}) ? 'red' : ''}" data-suit="${s}" type="button">${SYM[s]}<small>${SNAME[s]}</small></button>`).join('');
+    } else prompt = `${NAMES[G.bidder]} is naming trump…`;
+  } else if (G.phase === 'draw'){
+    if (G.drawTurn === 0){
+      mode = 'draw';
+      const n = G.sel.length;
+      prompt = 'Tap the non-trump cards you want to throw out.';
+      actions = `<button class="btn ghost" data-act="selall" type="button">Pick all non-trump</button>
+        <button class="btn" data-act="draw" type="button">${n ? `Throw out ${n} and draw` : 'Keep all six'}</button>`;
+    } else prompt = `${NAMES[G.drawTurn]} is drawing…`;
+  } else if (G.phase === 'play'){
+    if (G.turn === 0){
+      mode = 'play'; L = legal(G.hands[0], G.trick, G.trump);
+      if (!G.trick.length) prompt = G.tricks.length ? 'Your lead.' : 'You lead the first trick.';
+      else { const led = eff(G.trick[0].c, G.trump); prompt = led === 'T' ? 'Trump was led. Follow with trump if you can.' : L.length === G.hands[0].length ? 'Play any card.' : `Follow ${SNAME[led].toLowerCase()} or play trump.`; }
+    } else if (G.trick.length === 4) prompt = `${NAMES[trickWinner(G.trick, G.trump)]} ${V(trickWinner(G.trick, G.trump), 'takes', 'take')} it.`;
+    else if (G.turn !== null) prompt = `${NAMES[G.turn]} is playing…`;
+  }
+  const cards = hand.map(c => {
+    const tr = G.trump && isT(c, G.trump) ? '<span class="tag">TRUMP</span>' : '';
+    const fresh = G.fresh.includes(c.id) ? ' fresh' : '';
+    let html;
+    if (mode === 'play'){
+      const ok = L.includes(c);
+      html = cardHTML(c, (ok ? 'legal' : 'dim') + fresh, 'button', `type="button" data-card="${c.id}" ${ok ? '' : 'disabled'}`);
+    } else if (mode === 'draw'){
+      const can = !isT(c, G.trump);
+      html = cardHTML(c, (can ? 'legal' : '') + (G.sel.includes(c.id) ? ' sel' : ''), 'button', `type="button" data-card="${c.id}" ${can ? '' : 'disabled'} aria-pressed="${G.sel.includes(c.id)}"`);
+    } else html = cardHTML(c, fresh);
+    return tr ? html.replace(/<\/(div|button)>$/, tr + '</$1>') : html;
+  }).join('');
+  $('south').innerHTML = `<div class="me"><div class="plate ${active === 0 ? 'turn' : ''}">You${G.dealer === 0 ? '<small>D</small>' : ''}</div><div class="bubble">${G.say[0]}</div></div>
+    <div class="prompt">${prompt}</div><div class="actions">${actions}</div><div class="hand">${cards}</div>`;
+}
+
+function renderSide(){
+  const t = G.trump;
+  let track;
+  if (!t){
+    track = `<table class="track"><tr><td>Dealer</td><td>${NAMES[G.dealer]}</td></tr><tr><td>High bid</td><td>${G.highBid ? `${G.highBid} · ${NAMES[G.highBidder]}` : 'none yet'}</td></tr></table>`;
+  } else {
+    const {bd} = scoreHand(G.tricks, t, G.lowRule);
+    const seen = id => G.played.includes(id);
+    const jackId = 'J' + t;
+    const cell = (x, extra = '') => x ? `<span class="w">${NAMES[x.p]}</span> ${extra}` : '';
+    const pipLine = bd.pips.map((v, i) => `${NAMES[i][0]}${v}`).join(' · ');
+    track = `<table class="track">
+      <tr><td>Bid</td><td><span class="w">${NAMES[G.bidder]} ${G.bid}</span> in ${SNAME[t]}</td></tr>
+      <tr><td>High</td><td>${bd.high ? cell(bd.high, cardName(bd.high.c)) + ' so far' : 'no trump out yet'}</td></tr>
+      <tr><td>Low</td><td>${bd.low ? cell(bd.low, cardName(bd.low.c)) + ' so far' : 'no trump out yet'}</td></tr>
+      <tr><td>Jack</td><td>${bd.jack ? cell(bd.jack) : seen(jackId) ? 'on the table' : 'not seen'}</td></tr>
+      <tr><td>Joker (2)</td><td>${bd.joker ? cell(bd.joker) : seen('JK') ? 'on the table' : 'not seen'}</td></tr>
+      <tr><td>Game</td><td>${pipLine}</td></tr></table>`;
+  }
+  $('track').innerHTML = track;
+  $('lasttrick').innerHTML = G.lastTrick
+    ? `<div class="minitrick">${G.lastTrick.plays.map(x => `<figure>${cardHTML(x.c, x.p === G.lastTrick.w ? 'win' : '')}<figcaption>${NAMES[x.p]}</figcaption></figure>`).join('')}</div>`
+    : `<span style="color:var(--muted);font-size:13px">No tricks played yet this hand.</span>`;
+
+  const rows = G.history.map(h => `<tr><td>${h.hand}${SYM[h.trump]}</td>${h.d.map((x, i) => `<td class="${x < 0 ? 'neg' : ''}">${i === h.bidder ? '<u>' + (x > 0 ? '+' : '') + x + '</u>' : (x ? '+' + x : '·')}</td>`).join('')}</tr>`).join('');
+  $('pad').innerHTML = `<table><tr><th>#</th>${NAMES.map(n => `<th>${n}</th>`).join('')}</tr>${rows || `<tr><td colspan="5" class="empty">No hands yet</td></tr>`}
+    <tr class="tot"><td>Tot</td>${G.scores.map(s => `<td class="${s < 0 ? 'neg' : ''}">${s}</td>`).join('')}</tr></table>`;
+
+  $('log').innerHTML = G.log.slice(0, 14).map(s => `<li>${s}</li>`).join('');
+}
+
+function renderOverlay(){
+  const ov = $('overlay');
+  if (G.phase !== 'handEnd' && G.phase !== 'gameOver'){ ov.hidden = true; ov.innerHTML = ''; return; }
+  const R = G.result, bd = R.bd, b = G.bidder, t = G.trump;
+  const nm = x => NAMES[x];
+  const cn = c => `<span class="${isRed(c) ? 'red' : ''}">${cardName(c)}</span>`;
+  const row = (label, val) => `<tr><td>${label}</td><td>${val}</td></tr>`;
+  const capt = x => x ? nm(x.p) + (x.from !== x.p ? ` <small>(played by ${nm(x.from)})</small>` : '') : '<em>not in play</em>';
+  const headline = G.phase === 'gameOver' ? `${nm(G.winner)} ${V(G.winner, 'wins', 'win')} the game` : R.made ? `${nm(b)} made it` : `${nm(b)} ${V(b, 'got', 'got')} set`;
+  const sub = R.made ? `${R.pts[b]} points on a bid of ${G.bid} in ${SNAME[t]}` : `${R.pts[b]} points on a bid of ${G.bid} in ${SNAME[t]}, down ${G.bid}`;
+  ov.innerHTML = `<div class="result" role="dialog" aria-label="Hand result">
+    <h2>${headline}</h2><div class="sub">${sub}</div>
+    <table>
+      ${row('High', bd.high ? `${cn(bd.high.c)} · ${nm(bd.high.p)}` : '<em>not in play</em>')}
+      ${row('Low', bd.low ? `${cn(bd.low.c)} · ${nm(bd.low.p)}` : '<em>not in play</em>')}
+      ${row('Jack', capt(bd.jack))}
+      ${row('Joker (2)', capt(bd.joker))}
+      ${row('Game', (bd.game.p !== null ? nm(bd.game.p) : bd.game.tie ? 'tied, no point' : 'none') + ` <small>(${bd.pips.map((v, i) => nm(i) + ' ' + v).join(', ')})</small>`)}
+    </table>
+    <table style="margin-top:12px"><tr><th>Player</th><th style="text-align:right">Took</th><th style="text-align:right">Score</th><th style="text-align:right">Total</th></tr>
+      ${[0,1,2,3].map(i => `<tr><td>${nm(i)}${i === b ? ' <small>(bid)</small>' : ''}</td><td class="num">${R.pts[i]}</td><td class="num ${R.d[i] < 0 ? 'neg' : R.d[i] > 0 ? 'pos' : ''}">${R.d[i] > 0 ? '+' : ''}${R.d[i]}</td><td class="num">${G.scores[i]}</td></tr>`).join('')}
+    </table>
+    <div class="row-actions"><button class="btn" data-act="${G.phase === 'gameOver' ? 'again' : 'next'}" type="button">${G.phase === 'gameOver' ? 'Play again' : 'Deal next hand'}</button></div>
+  </div>`;
+  ov.hidden = false;
+}
+
+/* ---------- input ---------- */
+$('app').addEventListener('click', handleClick);
+function handleClick(e){
+  const el = e.target.closest('button');
+  if (!el || el.disabled) return;
+  if (el.dataset.bid !== undefined && G.phase === 'bid' && G.bidTurn === 0){ applyBid(0, +el.dataset.bid); step(); }
+  else if (el.dataset.suit && G.phase === 'trump' && G.bidder === 0){ setTrump(el.dataset.suit); step(); }
+  else if (el.dataset.card){
+    const c = CARD[el.dataset.card];
+    if (G.phase === 'play' && G.turn === 0 && legal(G.hands[0], G.trick, G.trump).includes(c)){ playCard(0, c); step(); }
+    else if (G.phase === 'draw' && G.drawTurn === 0 && !isT(c, G.trump)){
+      G.sel = G.sel.includes(c.id) ? G.sel.filter(x => x !== c.id) : [...G.sel, c.id]; render();
+    }
+  }
+  else if (el.dataset.act === 'selall' && G.phase === 'draw'){ G.sel = G.hands[0].filter(c => !isT(c, G.trump)).map(c => c.id); render(); }
+  else if (el.dataset.act === 'draw' && G.phase === 'draw' && G.drawTurn === 0){ const s = G.sel; G.sel = []; doDraw(0, s); step(); }
+  else if (el.dataset.act === 'next' && G.phase === 'handEnd'){ G.dealer = (G.dealer + 1) % 4; newHand(); step(); }
+  else if (el.dataset.act === 'again'){ clearTimeout(timer); newGame(); step(); }
+  else if (el.id === 'newGame'){ clearTimeout(timer); newGame(); step(); }
+}
+$('optTarget').value = String(SET.target);
+$('optLow').value = SET.lowRule;
+$('optSpeed').value = SET.speed;
+$('optTarget').addEventListener('change', e => { SET.target = +e.target.value; saveSet(); if (G.phase !== 'gameOver'){ G.target = SET.target; render(); } });
+$('optLow').addEventListener('change', e => { SET.lowRule = e.target.value; saveSet(); addLog('Low rule changes from the next hand.'); render(); });
+$('optSpeed').addEventListener('change', e => { SET.speed = e.target.value; saveSet(); });
+
+/* ---------- boot (keeps a game in progress across page updates) ---------- */
+function revive(x){
+  if (Array.isArray(x)) return x.map(revive);
+  if (x && typeof x === 'object'){
+    if (typeof x.id === 'string' && 's' in x && 'r' in x && CARD[x.id]) return CARD[x.id];
+    const o = {}; for (const k in x) o[k] = revive(x[k]); return o;
+  }
+  return x;
+}
+window.claude?.hot?.snapshot?.(() => ({G: JSON.parse(JSON.stringify(G))}));
+function start(data){
+  if (data && data.G){ try { G = revive(data.G); } catch (e) { G = null; } }
+  if (!G) newGame();
+  if (!G.bidNeed) G.bidNeed = [MIN_BID,MIN_BID,MIN_BID,MIN_BID];
+  step();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+
+</body></html>
