@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vector Duel — a vector-addition space battle</title>
+<style>
+:root{--bg:#0a0f1f;--panel:#131a31;--panel2:#1a2242;--line:#27325a;--ink:#e8edff;--dim:#8d99c2;--blue:#4cc9f0;--red:#ff5d73;--gold:#ffd166;--ok:#5ee6a8}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:12px 12px 40px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+header h1{margin:0;font-size:22px;letter-spacing:.14em;font-weight:800}
+header h1 span{color:var(--gold)}
+header p{margin:0;color:var(--dim);font-size:13px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+#wrap{position:relative;width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#070b18}
+canvas{display:block;width:100%}
+.statusbar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin:10px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px}
+.card h3{margin:0 0 2px;font-size:14px;letter-spacing:.06em}
+.card .row{display:flex;justify-content:space-between;gap:8px}
+.card .k{color:var(--dim)}
+.turnbox{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:92px}
+.turnbox b{font-size:22px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:12px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+@media (max-width:560px){.statusbar{grid-template-columns:1fr 1fr}.turnbox{grid-column:1/3;grid-row:1;flex-direction:row;gap:8px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.panel h2{margin:0 0 10px;font-size:17px}
+.field{margin:10px 0}
+.field>label{display:block;color:var(--dim);font-size:13px;margin-bottom:4px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:56px}
+button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+button:hover{border-color:#4a5a92}
+button.sel{background:var(--gold);color:#1b1400;border-color:var(--gold);font-weight:700}
+button.primary{background:var(--gold);color:#1b1400;border-color:var(--gold);font-weight:800;width:100%;padding:12px;margin-top:6px}
+button.primary:disabled{opacity:.5;cursor:default}
+input[type=number],select{font:inherit;color:var(--ink);background:#0d1328;border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:110px}
+input[type=number]:disabled{opacity:.4}
+.inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.err{color:var(--red);font-size:13px;min-height:18px;margin-top:6px}
+.hint{color:var(--dim);font-size:12.5px}
+.timer{font-size:20px;font-weight:800;color:var(--gold);text-align:right}
+.hidden{display:none!important}
+.res{border-left:4px solid var(--line);padding:6px 10px;margin:8px 0;background:#0e1430;border-radius:6px;font-size:13.5px}
+.res h4{margin:0 0 4px}
+.banner{font-size:18px;font-weight:800;text-align:center;padding:10px;border-radius:8px;background:#211a05;border:1px solid var(--gold);color:var(--gold);margin-bottom:8px}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:12px}
+summary{cursor:pointer;font-weight:700}
+details ol,details ul{padding-left:20px;margin:8px 0}
+details li{margin:4px 0}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border-bottom:1px solid var(--line);padding:4px 5px;text-align:right;white-space:nowrap}
+th{color:var(--dim);font-weight:600;position:sticky;top:0;background:var(--panel)}
+td:first-child,th:first-child,td:nth-child(2),th:nth-child(2){text-align:left}
+.tablewrap{max-height:320px;overflow:auto;margin-top:8px}
+.settings{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:10px}
+.settings label{display:flex;flex-direction:column;gap:4px;color:var(--dim);font-size:13px}
+.settings label.chk{flex-direction:row;align-items:center;color:var(--ink)}
+.eq{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0d1328;padding:1px 5px;border-radius:4px}
+footer{color:var(--dim);font-size:12px;margin-top:16px}
+footer a{color:var(--blue)}
+#handoffBox{text-align:center;padding:24px 8px}
+#handoffBox .big{font-size:20px;font-weight:800;margin-bottom:6px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>VECTOR <span>DUEL</span></h1>
+  <p>Newtonian space combat — steer with thrust vectors, aim with relative velocity.</p>
+</header>
+
+<div id="wrap"><canvas id="cv"></canvas></div>
+
+<div class="statusbar">
+  <div class="card" id="card0"></div>
+  <div class="card turnbox"><span class="k" style="color:var(--dim);font-size:12px">TURN</span><b id="turnNum">1</b><span id="turnMax" class="hint"></span></div>
+  <div class="card" id="card1"></div>
+</div>
+
+<div class="grid2">
+  <div>
+    <!-- Orders -->
+    <section class="panel" id="ordersPanel">
+      <div class="inline" style="justify-content:space-between">
+        <h2 id="ordTitle" style="margin:0">Blue Team — orders</h2>
+        <div class="timer mono" id="timerEl"></div>
+      </div>
+      <div class="field">
+        <label>Thrust magnitude</label>
+        <div class="seg" id="magSeg">
+          <button data-m="0">0 cm</button><button data-m="10">10 cm</button><button data-m="20">20 cm</button><button data-m="30">30 cm</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Thrust direction θ (degrees, counter-clockwise from +x)</label>
+        <div class="inline"><input type="number" id="angIn" step="any" placeholder="e.g. 135"> <span class="hint">0° = +x, 90° = +y</span></div>
+      </div>
+      <div class="field">
+        <label>Missile (launched from your new position, after you move)</label>
+        <div class="inline">
+          <label style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="fireChk"> Fire at φ =</label>
+          <input type="number" id="fireAng" step="any" placeholder="deg" disabled>
+          <span class="hint" id="mLeft"></span>
+        </div>
+      </div>
+      <div class="field" id="predField">
+        <label>Predict your position after this move (cm)</label>
+        <div class="inline">x <input type="number" id="px" step="any"> y <input type="number" id="py" step="any"></div>
+      </div>
+      <div class="err" id="ordErr"></div>
+      <button class="primary" id="lockBtn">Lock in orders</button>
+      <p class="hint" id="ordHint" style="margin:8px 0 0"></p>
+    </section>
+
+    <!-- Handoff (hot-seat) -->
+    <section class="panel hidden" id="handoffPanel">
+      <div id="handoffBox">
+        <div class="big">Blue's orders are locked ✓</div>
+        <p class="hint">Pass the device to the Red Team. Blue: no peeking.</p>
+        <button class="primary" id="readyBtn" style="max-width:280px">Red Team is ready</button>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="panel hidden" id="resultsPanel">
+      <h2>Turn results</h2>
+      <div id="resBody"></div>
+      <button class="primary" id="nextBtn">Next turn</button>
+    </section>
+
+    <!-- Animating -->
+    <section class="panel hidden" id="animPanel"><h2>Engines firing…</h2><p class="hint">Ships and missiles move simultaneously.</p></section>
+  </div>
+
+  <div>
+    <details open>
+      <summary>How to play</summary>
+      <ol>
+        <li>The sector is <b>200 cm × 100 cm</b> with the origin at the center. Angles are measured in degrees <b>counter-clockwise from the +x axis</b>.</li>
+        <li>Each turn both teams secretly choose a <b>thrust vector</b>: 0, 10, 20 or 30 cm in any direction.</li>
+        <li>There is no friction in space. Your thrust adds to your velocity, and your velocity is how far you move this turn:<br>
+          <span class="eq">v<sub>new</sub> = v<sub>old</sub> + T</span> &nbsp; <span class="eq">r<sub>new</sub> = r<sub>old</sub> + v<sub>new</sub></span><br>
+          So each move is the sum of <i>every</i> thrust you have fired.</li>
+        <li>After moving, you may launch a <b>missile</b> (5 per game). It keeps your ship's velocity plus 40 cm/turn in the direction you aim:
+          <span class="eq">v<sub>m</sub> = v<sub>ship</sub> + 40∠φ</span>. Missiles fly straight for 4 turns, moving at the same time as the ships.</li>
+        <li>A ship is destroyed if any missile — including its own — passes within <b>6 cm</b> of its center during a move. Ships that pass within 10 cm of each other collide and both are destroyed.</li>
+        <li>Fly off the board and you are lost in space.</li>
+        <li>Win by destroying the enemy or watching them drift away. If both ships are lost on the same turn, or the turn limit runs out, the game is a draw.</li>
+      </ol>
+      <p class="hint">The ring around the active ship is your protractor. Faint dots show each ship's past positions; the gap between the last two dots is its current velocity.</p>
+    </details>
+
+    <details>
+      <summary>Game settings</summary>
+      <div class="settings">
+        <label>Opponent
+          <select id="setMode"><option value="cpu">Computer (Red)</option><option value="hotseat">Two teams, one screen</option></select></label>
+        <label>Computer skill
+          <select id="setSkill"><option value="cadet">Cadet</option><option value="captain" selected>Captain</option><option value="admiral">Admiral</option></select></label>
+        <label>Time per team's orders
+          <select id="setTimer"><option value="0">No timer</option><option value="60">1 min</option><option value="120">2 min</option><option value="240">4 min</option></select></label>
+        <label>Turn limit
+          <select id="setTurns"><option>8</option><option>10</option><option selected>12</option><option>16</option><option>20</option></select></label>
+        <label class="chk"><input type="checkbox" id="setPred"> Require position predictions</label>
+        <label class="chk"><input type="checkbox" id="setAids"> Training aids (live vector preview)</label>
+      </div>
+      <button class="primary" id="newBtn" style="margin-top:12px">Start new game with these settings</button>
+      <p class="hint">Training aids draw your velocity, thrust, and resultant head-to-tail before you commit, plus your missile's path. Turn them off when students should do the math themselves. Training aids can be switched on or off mid-game.</p>
+    </details>
+
+    <details>
+      <summary>Flight log</summary>
+      <div class="inline" style="margin-top:8px"><button id="copyBtn">Copy log (tab-separated)</button><span class="hint" id="copyMsg"></span></div>
+      <p class="hint" style="margin:6px 0 0">Paste into a spreadsheet or lab report. Velocities are in cm per turn.</p>
+      <div class="tablewrap"><table id="logTable"></table></div>
+    </details>
+  </div>
+</div>
+
+<footer>Inspired by <i>Sector Vector</i>, the force-table replacement lab game by J. O'Brien and G. Sirokman (Wentworth Institute of Technology). The missile and collision rules here are an adaptation for the browser.</footer>
+</main>
+
+<script>
+(() => {
+"use strict";
+// ---------- constants ----------
+const SHIP_R = 5, HIT_R = 6, COLLIDE_R = 10, MSPEED = 40, MLIFE = 4, MCOUNT = 5;
+const XMIN=-100, XMAX=100, YMIN=-50, YMAX=50;
+const TEAMS = [{name:"Blue", color:"#4cc9f0"}, {name:"Red", color:"#ff5d73"}];
+const GOLD = "#ffd166";
+
+// ---------- vector helpers ----------
+const V=(x,y)=>({x,y});
+const add=(a,b)=>V(a.x+b.x,a.y+b.y), sub=(a,b)=>V(a.x-b.x,a.y-b.y), mul=(a,k)=>V(a.x*k,a.y*k);
+const dot=(a,b)=>a.x*b.x+a.y*b.y, len=a=>Math.hypot(a.x,a.y);
+const lerp=(a,b,t)=>V(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);
+const norm360=d=>((d%360)+360)%360;
+const angOf=a=>norm360(Math.atan2(a.y,a.x)*180/Math.PI);
+const polar=(m,deg)=>V(m*Math.cos(deg*Math.PI/180), m*Math.sin(deg*Math.PI/180));
+const f1=n=>{const r=Math.round(n*10)/10; return (Object.is(r,-0)?0:r).toFixed(1);};
+const vstr=a=>`(${f1(a.x)}, ${f1(a.y)})`;
+const pstr=a=>len(a)<0.05?"0":`${f1(len(a))} ∠ ${f1(angOf(a))}°`;
+const offBoard=p=>p.x<XMIN||p.x>XMAX||p.y<YMIN||p.y>YMAX;
+const $=id=>document.getElementById(id);
+
+// earliest t in [0,1] at which |(a(t)-b(t))| <= R, linear motion a0->a1, b0->b1
+function hitTime(a0,a1,b0,b1,R){
+  const r0=sub(a0,b0), dr=sub(sub(a1,a0),sub(b1,b0));
+  const c=dot(r0,r0)-R*R;
+  if(c<=0) return dot(r0,dr)<0 ? 0 : null; // already overlapping: only a hit if closing in
+  const a=dot(dr,dr); if(a<1e-9) return null;
+  const b=2*dot(r0,dr), disc=b*b-4*a*c; if(disc<0) return null;
+  const t=(-b-Math.sqrt(disc))/(2*a);
+  return (t>=0&&t<=1)?t:null;
+}
+
+// ---------- state ----------
+let S, G;
+function readSettings(){
+  S={mode:$("setMode").value, skill:$("setSkill").value, timer:+$("setTimer").value,
+     maxTurns:+$("setTurns").value, predict:$("setPred").checked, aids:$("setAids").checked};
+}
+function mkShip(x,y,i){return {p:V(x,y), v:V(0,0), alive:true, missiles:MCOUNT, trail:[V(x,y)], heading:i?180:0, predErrs:[], fate:null};}
+function newGame(){
+  readSettings(); clearTimer();
+  G={turn:1, ships:[mkShip(-70,-20,0), mkShip(70,20,1)], missiles:[], log:[], orders:[null,null],
+     phase:"orders", cur:0, over:null, anim:null, results:null};
+  renderStatus(); renderLog(); startOrders(0);
+}
+
+// ---------- panels ----------
+function show(id){ ["ordersPanel","handoffPanel","resultsPanel","animPanel"].forEach(p=>$(p).classList.toggle("hidden",p!==id)); }
+
+let selMag=0;
+function setMag(m){ selMag=m; [...$("magSeg").children].forEach(b=>b.classList.toggle("sel",+b.dataset.m===m)); draw(); }
+
+function startOrders(i){
+  G.cur=i; G.phase="orders";
+  if(i===1 && S.mode==="cpu"){ G.orders[1]=aiOrders(1); resolveTurn(); return; }
+  const t=TEAMS[i], ship=G.ships[i];
+  $("ordTitle").textContent=`${t.name} Team — orders`;
+  $("ordTitle").style.color=t.color;
+  setMag(0); $("angIn").value=""; $("fireChk").checked=false; $("fireAng").value=""; $("fireAng").disabled=true;
+  $("px").value=""; $("py").value=""; $("ordErr").textContent="";
+  $("fireChk").disabled = ship.missiles<=0;
+  $("mLeft").textContent=`${ship.missiles} left`;
+  $("predField").classList.toggle("hidden",!S.predict);
+  $("ordHint").textContent = S.mode==="hotseat" ? "Orders stay hidden until both teams lock in." : "The computer chooses its orders at the same time — it can't see yours.";
+  show("ordersPanel"); startTimer(); draw();
+}
+
+function readForm(auto){
+  const ang=parseFloat($("angIn").value), fa=parseFloat($("fireAng").value);
+  const fire=$("fireChk").checked;
+  const o={mag:selMag, ang:isNaN(ang)?0:norm360(ang), fire, fireAng:isNaN(fa)?0:norm360(fa), pred:null};
+  if(!auto){
+    if(selMag>0 && isNaN(ang)) return {error:"Enter a thrust direction (degrees)."};
+    if(fire && isNaN(fa)) return {error:"Enter the missile direction, or uncheck Fire."};
+  } else if(fire && isNaN(fa)) o.fire=false;
+  if(S.predict){
+    const px=parseFloat($("px").value), py=parseFloat($("py").value);
+    if(isNaN(px)||isNaN(py)){ if(!auto) return {error:"Enter your predicted x and y."}; }
+    else o.pred=V(px,py);
+  }
+  return o;
+}
+function lockOrders(auto=false){
+  if(G.phase!=="orders") return;
+  const o=readForm(auto);
+  if(o.error){ $("ordErr").textContent=o.error; return; }
+  clearTimer(); G.orders[G.cur]=o;
+  if(G.cur===0){
+    if(S.mode==="hotseat"){ G.phase="handoff"; show("handoffPanel"); draw(); }
+    else startOrders(1);
+  } else resolveTurn();
+}
+
+// ---------- timer ----------
+let timerId=null, timeLeft=0;
+function clearTimer(){ if(timerId) clearInterval(timerId); timerId=null; $("timerEl").textContent=""; }
+function startTimer(){
+  clearTimer(); if(!S.timer) return;
+  timeLeft=S.timer; paintTimer();
+  timerId=setInterval(()=>{ timeLeft--; paintTimer(); if(timeLeft<=0){ clearTimer(); lockOrders(true); } },1000);
+}
+function paintTimer(){ const m=Math.floor(timeLeft/60), s=timeLeft%60; $("timerEl").textContent=`${m}:${String(s).padStart(2,"0")}`; $("timerEl").style.color=timeLeft<=15?"var(--red)":"var(--gold)"; }
+
+// ---------- resolution ----------
+function resolveTurn(){
+  const ships=G.ships, s0=ships.map(s=>({...s.p})), s1=[], T=[], v0=ships.map(s=>({...s.v}));
+  ships.forEach((s,i)=>{ const o=G.orders[i]; T[i]=polar(o.mag,o.ang); s.v=add(s.v,T[i]); s1[i]=add(s.p,s.v); if(len(s.v)>0.3) s.heading=angOf(s.v); });
+  const ms=G.missiles.map(m=>({m, s0:{...m.p}, s1:add(m.p,m.v), owner:m.owner, tEnd:1}));
+  const events=[];
+  ms.forEach((mm,k)=>{ for(let i=0;i<2;i++){ const t=hitTime(mm.s0,mm.s1,s0[i],s1[i],HIT_R); if(t!==null) events.push({t,type:"m",k,i}); } });
+  const tc=hitTime(s0[0],s1[0],s0[1],s1[1],COLLIDE_R); if(tc!==null) events.push({t:tc,type:"c"});
+  events.sort((a,b)=>a.t-b.t);
+  const death=[null,null], used=new Set(), ex=[], notes=[[],[]];
+  for(const e of events){
+    if(e.type==="m"){
+      if(used.has(e.k)||death[e.i]!==null) continue;
+      used.add(e.k); ms[e.k].tEnd=e.t; death[e.i]=e.t;
+      ex.push({p:lerp(s0[e.i],s1[e.i],e.t), t:e.t});
+      const own=ms[e.k].owner;
+      notes[e.i].push(own===e.i?"💥 destroyed by its OWN missile":`💥 hit by a ${TEAMS[own].name} missile`);
+    } else {
+      if(death[0]!==null||death[1]!==null) continue;
+      death[0]=death[1]=e.t;
+      for(let i=0;i<2;i++){ ex.push({p:lerp(s0[i],s1[i],e.t),t:e.t}); notes[i].push("💥 collided with the enemy ship"); }
+    }
+  }
+  ships.forEach((s,i)=>{
+    if(death[i]!==null){ s.p=lerp(s0[i],s1[i],death[i]); s.alive=false; s.fate="destroyed"; }
+    else { s.p=s1[i]; if(offBoard(s.p)){ s.alive=false; s.fate="lost"; notes[i].push("🌌 drifted off the board — lost in space"); } }
+    s.trail.push({...s.p});
+  });
+  // advance surviving missiles
+  const keep=[];
+  ms.forEach((mm,k)=>{ if(used.has(k)) return; const m=mm.m; m.prev=mm.s0; m.p=mm.s1; m.age++; if(m.age>=MLIFE||offBoard(m.p)) return; keep.push(m); });
+  G.missiles=keep;
+  // launches
+  const launched=[null,null];
+  ships.forEach((s,i)=>{ const o=G.orders[i];
+    if(o.fire && s.alive && s.missiles>0){ s.missiles--; const mv=add(s.v,polar(MSPEED,o.fireAng)); G.missiles.push({p:{...s.p}, prev:null, v:mv, owner:i, age:0}); launched[i]=mv; }
+  });
+  // predictions + log
+  const res=[];
+  ships.forEach((s,i)=>{
+    const o=G.orders[i]; let err=null;
+    if(o.pred){ err=len(sub(o.pred,s1[i])); s.predErrs.push(err); }
+    res.push({i,o,T:T[i],v0:v0[i],v:{...s.v},r0:s0[i],r1:s1[i],err,launched:launched[i],notes:notes[i]});
+    G.log.push([G.turn,TEAMS[i].name,o.mag,f1(o.ang),f1(T[i].x),f1(T[i].y),f1(s.v.x),f1(s.v.y),f1(len(s.v)),f1(angOf(s.v)),f1(s1[i].x),f1(s1[i].y),
+      launched[i]?f1(o.fireAng):"", o.pred?f1(o.pred.x):"", o.pred?f1(o.pred.y):"", err!==null?f1(err):"", notes[i].join("; ").replace(/[💥🌌]\s?/gu,"")]);
+  });
+  // outcome
+  const lost=ships.map(s=>!s.alive);
+  if(lost[0]&&lost[1]) G.over={msg:"Both ships lost — it's a draw!", color:GOLD};
+  else if(lost[0]) G.over={msg:"Red Team wins!", color:TEAMS[1].color};
+  else if(lost[1]) G.over={msg:"Blue Team wins!", color:TEAMS[0].color};
+  else if(G.turn>=S.maxTurns) G.over={msg:"Turn limit reached — draw.", color:GOLD};
+  G.results=res;
+  G.anim={s0,s1,ms,death,ex,start:performance.now(),dur:1700};
+  G.phase="anim"; show("animPanel");
+  requestAnimationFrame(tick);
+}
+function tick(now){
+  const t=(now-G.anim.start)/G.anim.dur;
+  G.anim.t=Math.min(1,t); draw();
+  if(t<1) requestAnimationFrame(tick); else finishTurn();
+}
+function finishTurn(){
+  G.phase="results"; G.anim=null; renderResults(); renderStatus(); renderLog(); draw();
+}
+
+function renderResults(){
+  let h="";
+  if(G.over) h+=`<div class="banner" style="color:${G.over.color};border-color:${G.over.color}">${G.over.msg}</div>`;
+  for(const r of G.results){
+    const t=TEAMS[r.i];
+    h+=`<div class="res" style="border-left-color:${t.color}"><h4 style="color:${t.color}">${t.name}</h4>
+      Thrust <b>T</b> = ${r.o.mag} cm ∠ ${f1(r.o.ang)}° = <span class="mono">${vstr(r.T)}</span><br>
+      Velocity <span class="mono">${vstr(r.v0)}</span> + <span class="mono">${vstr(r.T)}</span> = <b class="mono">${vstr(r.v)}</b> = ${pstr(r.v)} cm/turn<br>
+      Moved <span class="mono">${vstr(r.r0)}</span> → <b class="mono">${vstr(r.r1)}</b>`;
+    if(r.err!==null) h+=`<br>Prediction <span class="mono">${vstr(r.o.pred)}</span> — off by <b style="color:${r.err<=2?"var(--ok)":r.err<=6?GOLD:"var(--red)"}">${f1(r.err)} cm</b>`;
+    if(r.launched) h+=`<br>🚀 Missile at φ = ${f1(r.o.fireAng)}°: v<sub>m</sub> = ${vstr(r.v)} + 40∠${f1(r.o.fireAng)}° = <span class="mono">${vstr(r.launched)}</span> = ${pstr(r.launched)} cm/turn`;
+    else if(r.o.fire && !G.ships[r.i].alive) h+=`<br>Missile not launched (ship lost).`;
+    if(r.notes.length) h+=`<br><b>${r.notes.join("<br>")}</b>`;
+    h+=`</div>`;
+  }
+  $("resBody").innerHTML=h;
+  $("nextBtn").textContent=G.over?"Play again":"Next turn";
+  show("resultsPanel");
+}
+function nextTurn(){
+  if(G.over){ newGame(); return; }
+  G.turn++; G.orders=[null,null]; renderStatus(); startOrders(0);
+}
+
+// ---------- status & log ----------
+function renderStatus(){
+  $("turnNum").textContent=G.turn; $("turnMax").textContent=`of ${S.maxTurns}`;
+  G.ships.forEach((s,i)=>{
+    const t=TEAMS[i];
+    const label = i===1&&S.mode==="cpu" ? "Red (computer)" : t.name+" Team";
+    const avg = s.predErrs.length ? f1(s.predErrs.reduce((a,b)=>a+b,0)/s.predErrs.length)+" cm" : "—";
+    $("card"+i).innerHTML=`<h3 style="color:${t.color}">${label}${s.alive?"":(s.fate==="lost"?" · LOST":" · DESTROYED")}</h3>
+      <div class="row"><span class="k">r</span><span class="mono">${vstr(s.p)}</span></div>
+      <div class="row"><span class="k">v</span><span class="mono">${vstr(s.v)}</span></div>
+      <div class="row"><span class="k">missiles</span><span>${"●".repeat(s.missiles)}${"○".repeat(MCOUNT-s.missiles)}</span></div>
+      ${S.predict?`<div class="row"><span class="k">avg pred. error</span><span>${avg}</span></div>`:""}`;
+  });
+}
+const LOGH=["Turn","Team","|T|","θ","Tx","Ty","vx","vy","|v|","θv","x","y","φ missile","pred x","pred y","pred err","event"];
+function renderLog(){
+  let h="<tr>"+LOGH.map(x=>`<th>${x}</th>`).join("")+"</tr>";
+  for(const r of G.log) h+="<tr>"+r.map((x,j)=>`<td${j===1?` style="color:${x==="Blue"?TEAMS[0].color:TEAMS[1].color}"`:""}>${x}</td>`).join("")+"</tr>";
+  $("logTable").innerHTML=h;
+}
+async function copyLog(){
+  const txt=[LOGH,...G.log].map(r=>r.join("\t")).join("\n");
+  try{ await navigator.clipboard.writeText(txt); $("copyMsg").textContent="Copied ✓"; }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
+    let ok=false; try{ ok=document.execCommand("copy"); }catch(_){} ta.remove();
+    $("copyMsg").textContent= ok?"Copied ✓":"Copy blocked — select the table and copy manually.";
+  }
+  setTimeout(()=>$("copyMsg").textContent="",2500);
+}
+
+// ---------- computer opponent ----------
+function gauss(){ return (Math.random()+Math.random()+Math.random()-1.5)/0.5; }
+function aiOrders(i){
+  const me=G.ships[i], en=G.ships[1-i];
+  const prof={cadet:{noise:40,aim:11,fire:0.55}, captain:{noise:15,aim:5,fire:0.7}, admiral:{noise:4,aim:1.5,fire:0.85}}[S.skill];
+  let best=null;
+  const cands=[{mag:0,ang:0}];
+  for(const mag of [10,20,30]) for(let a=0;a<360;a+=15) cands.push({mag,ang:a});
+  for(const c of cands){
+    const v=add(me.v,polar(c.mag,c.ang)); let score=0, p=me.p;
+    for(let k=1;k<=3;k++){
+      const q=add(p,v);
+      const m=12, ox=Math.max(0,XMIN+m-q.x,q.x-(XMAX-m)), oy=Math.max(0,YMIN+m-q.y,q.y-(YMAX-m));
+      if(ox>0||oy>0) score+=(k===1?2000:k===2?400:120)+(ox+oy)*(k===1?20:6);
+      // missile threats
+      for(const ms of G.missiles){
+        if(ms.age+k>MLIFE) continue;
+        const a0=add(ms.p,mul(ms.v,k-1)), a1=add(ms.p,mul(ms.v,k));
+        if(hitTime(a0,a1,p,q,HIT_R+8)!==null) score+= k===1?900:300;
+      }
+      if(k===1){
+        const eq=add(en.p,en.v), d=len(sub(q,eq));
+        if(d<35) score+=(35-d)*8;
+        if(d>110) score+=(d-110)*1.2;
+      }
+      p=q;
+    }
+    const sp=len(v); if(sp>32) score+=(sp-32)*5;
+    score+=Math.random()*prof.noise;
+    if(!best||score<best.score) best={...c,score,v};
+  }
+  const o={mag:best.mag, ang:best.ang, fire:false, fireAng:0, pred:null};
+  // aim a missile at where the enemy would be if it coasts
+  const myActive=G.missiles.filter(m=>m.owner===i).length;
+  if(me.missiles>0 && myActive<2){
+    const P=add(me.p,best.v), Q=add(en.p,en.v), D=sub(Q,P), R=sub(en.v,best.v);
+    const a=dot(R,R)-MSPEED*MSPEED, b=2*dot(D,R), c=dot(D,D);
+    let t=null;
+    if(Math.abs(a)<1e-6){ if(b<0) t=-c/b; }
+    else { const disc=b*b-4*a*c; if(disc>=0){ const r1=(-b-Math.sqrt(disc))/(2*a), r2=(-b+Math.sqrt(disc))/(2*a); t=[r1,r2].filter(x=>x>0).sort((x,y)=>x-y)[0]??null; } }
+    if(t!==null && t>0.5 && t<=3.6 && Math.random()<prof.fire){
+      const dir=add(D,mul(R,t));
+      o.fire=true; o.fireAng=norm360(angOf(dir)+gauss()*prof.aim);
+    }
+  }
+  return o;
+}
+
+// ---------- drawing ----------
+const cv=$("cv"), ctx=cv.getContext("2d");
+let CW=800, CH=420, pad=28, sc=3.7, dpr=1;
+const stars=Array.from({length:160},()=>({x:XMIN+Math.random()*200,y:YMIN+Math.random()*100,r:Math.random()*1.2+0.2,a:Math.random()*0.6+0.2}));
+const W2S=p=>[pad+(p.x-XMIN)*sc, pad+(YMAX-p.y)*sc];
+
+function resize(){
+  dpr=window.devicePixelRatio||1;
+  CW=$("wrap").clientWidth; pad=CW<520?20:30; sc=(CW-2*pad)/200; CH=100*sc+2*pad;
+  cv.style.height=CH+"px"; cv.width=Math.round(CW*dpr); cv.height=Math.round(CH*dpr);
+  draw();
+}
+function arrow(a,b,col,w=2,dash=null,label=null){
+  const [x0,y0]=W2S(a),[x1,y1]=W2S(b), dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy); if(L<2) return;
+  const ux=dx/L, uy=dy/L, h=Math.min(10,L*0.45);
+  ctx.save(); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=w;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1-ux*h*0.6,y1-uy*h*0.6); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x1-ux*h-uy*h*0.5,y1-uy*h+ux*h*0.5); ctx.lineTo(x1-ux*h+uy*h*0.5,y1-uy*h-ux*h*0.5); ctx.closePath(); ctx.fill();
+  if(label){ ctx.font="bold 12px system-ui"; ctx.fillText(label,(x0+x1)/2+uy*11-4,(y0+y1)/2-ux*11+4); }
+  ctx.restore();
+}
+function drawShip(p,heading,col,alpha=1){
+  const [x,y]=W2S(p), r=SHIP_R*sc;
+  ctx.save(); ctx.translate(x,y);
+  ctx.globalAlpha=alpha*0.35; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=alpha; ctx.rotate(-heading*Math.PI/180);
+  ctx.shadowColor=col; ctx.shadowBlur=10; ctx.fillStyle=col;
+  ctx.beginPath(); ctx.moveTo(r*1.25,0); ctx.lineTo(-r*0.9,r*0.8); ctx.lineTo(-r*0.45,0); ctx.lineTo(-r*0.9,-r*0.8); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawWreck(p,col){
+  const [x,y]=W2S(p), r=SHIP_R*sc;
+  ctx.save(); ctx.strokeStyle=col; ctx.globalAlpha=0.8; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x-r,y-r); ctx.lineTo(x+r,y+r); ctx.moveTo(x+r,y-r); ctx.lineTo(x-r,y+r); ctx.stroke();
+  for(let k=0;k<6;k++){ const a=k*1.05+0.4, d=r*(1.3+0.4*(k%2)); ctx.fillStyle=col; ctx.fillRect(x+Math.cos(a)*d-1,y+Math.sin(a)*d-1,2.5,2.5); }
+  ctx.restore();
+}
+function drawMissile(p,prev,col){
+  const [x,y]=W2S(p);
+  if(prev){ const [x0,y0]=W2S(prev); const g=ctx.createLinearGradient(x0,y0,x,y); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(1,col);
+    ctx.save(); ctx.strokeStyle=g; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x,y); ctx.stroke(); ctx.restore(); }
+  ctx.save(); ctx.fillStyle="#fff"; ctx.shadowColor=col; ctx.shadowBlur=12; ctx.beginPath(); ctx.arc(x,y,Math.max(2.5,1.4*sc),0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x,y,Math.max(1.5,0.8*sc),0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function drawRose(p,col){
+  const [x,y]=W2S(p), R=16*sc;
+  ctx.save(); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.globalAlpha=0.55; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(x,y,R,0,Math.PI*2); ctx.stroke();
+  for(let a=0;a<360;a+=15){ const rad=a*Math.PI/180, l=a%90===0?7:a%45===0?5:3;
+    ctx.beginPath(); ctx.moveTo(x+Math.cos(rad)*R,y-Math.sin(rad)*R); ctx.lineTo(x+Math.cos(rad)*(R-l),y-Math.sin(rad)*(R-l)); ctx.stroke(); }
+  ctx.globalAlpha=0.9; ctx.font="10px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(const a of [0,90,180,270]){ const rad=a*Math.PI/180; ctx.fillText(a+"°",x+Math.cos(rad)*(R+11),y-Math.sin(rad)*(R+9)); }
+  ctx.restore();
+}
+function drawBoard(){
+  ctx.fillStyle="#070b18"; ctx.fillRect(0,0,CW,CH);
+  const [bx,by]=W2S(V(XMIN,YMAX)); ctx.fillStyle="#0c1330"; ctx.fillRect(bx,by,200*sc,100*sc);
+  for(const s of stars){ const [x,y]=W2S(s); ctx.fillStyle=`rgba(220,230,255,${s.a})`; ctx.fillRect(x,y,s.r,s.r); }
+  ctx.lineWidth=1;
+  for(let x=XMIN;x<=XMAX;x+=10){ const [sx]=W2S(V(x,0)); ctx.strokeStyle=x%50===0?"rgba(140,160,230,.28)":"rgba(140,160,230,.10)"; ctx.beginPath(); ctx.moveTo(sx+.5,by); ctx.lineTo(sx+.5,by+100*sc); ctx.stroke(); }
+  for(let y=YMIN;y<=YMAX;y+=10){ const [,sy]=W2S(V(0,y)); ctx.strokeStyle=y%50===0?"rgba(140,160,230,.28)":"rgba(140,160,230,.10)"; ctx.beginPath(); ctx.moveTo(bx,sy+.5); ctx.lineTo(bx+200*sc,sy+.5); ctx.stroke(); }
+  // axes
+  ctx.strokeStyle="rgba(210,220,255,.55)"; ctx.lineWidth=1.3;
+  const [ox,oy]=W2S(V(0,0));
+  ctx.beginPath(); ctx.moveTo(bx,oy); ctx.lineTo(bx+200*sc,oy); ctx.moveTo(ox,by); ctx.lineTo(ox,by+100*sc); ctx.stroke();
+  ctx.fillStyle="rgba(210,220,255,.75)"; ctx.font="11px system-ui"; ctx.textAlign="right"; ctx.textBaseline="bottom";
+  ctx.fillText("+x",bx+200*sc-3,oy-3); ctx.textAlign="left"; ctx.textBaseline="top"; ctx.fillText("+y",ox+4,by+3);
+  ctx.fillStyle="rgba(170,180,220,.7)"; ctx.font="10px system-ui"; ctx.textAlign="center"; ctx.textBaseline="top";
+  for(let x=XMIN;x<=XMAX;x+=50){ const [sx]=W2S(V(x,0)); ctx.fillText(x,sx,by+100*sc+4); }
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let y=YMIN;y<=YMAX;y+=50){ const [,sy]=W2S(V(0,y)); ctx.fillText(y,bx-4,sy); }
+  ctx.strokeStyle="rgba(255,209,102,.5)"; ctx.lineWidth=1.5; ctx.strokeRect(bx,by,200*sc,100*sc);
+}
+function drawTrails(){
+  G.ships.forEach((s,i)=>{
+    const col=TEAMS[i].color; const tr=s.trail;
+    ctx.save(); ctx.strokeStyle=col; ctx.globalAlpha=0.22; ctx.setLineDash([3,4]); ctx.lineWidth=1;
+    ctx.beginPath(); tr.forEach((p,k)=>{ const [x,y]=W2S(p); k?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); ctx.setLineDash([]);
+    ctx.globalAlpha=0.55; ctx.fillStyle=col;
+    tr.forEach(p=>{ const [x,y]=W2S(p); ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill(); });
+    ctx.restore();
+  });
+}
+function draw(){
+  if(!G) return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawBoard(); drawTrails();
+  if(G.phase==="anim" && G.anim){
+    const A=G.anim, t=A.t||0;
+    A.ms.forEach(mm=>{ if(t<=mm.tEnd) drawMissile(lerp(mm.s0,mm.s1,t), mm.s0, TEAMS[mm.owner].color); });
+    G.ships.forEach((s,i)=>{
+      const td=A.death[i];
+      if(td===null||t<td) drawShip(lerp(A.s0[i],A.s1[i],t), s.heading, TEAMS[i].color);
+    });
+    A.ex.forEach(e=>{ if(t>=e.t){ const k=Math.min(1,(t-e.t)/0.3), [x,y]=W2S(e.p);
+      ctx.save(); ctx.globalAlpha=1-k*0.5; const g=ctx.createRadialGradient(x,y,0,x,y,(4+14*k)*sc);
+      g.addColorStop(0,"#fff"); g.addColorStop(0.35,GOLD); g.addColorStop(1,"rgba(255,93,115,0)");
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,(4+14*k)*sc,0,Math.PI*2); ctx.fill(); ctx.restore(); } });
+    return;
+  }
+  // static
+  G.missiles.forEach(m=>{
+    const col=TEAMS[m.owner].color;
+    if(S.aids){ for(let k=1;k<=MLIFE-m.age;k++){ const q=add(m.p,mul(m.v,k)); const [x,y]=W2S(q); ctx.fillStyle=col; ctx.globalAlpha=0.35; ctx.beginPath(); ctx.arc(x,y,1.8,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+      arrow(m.p,add(m.p,m.v),col,1,[2,3]); }
+    drawMissile(m.p,m.prev,col);
+  });
+  G.ships.forEach((s,i)=>{
+    const col=TEAMS[i].color;
+    if(!s.alive){ if(s.fate==="destroyed") drawWreck(s.p,col); return; }
+    if(S.aids && len(s.v)>0.3) arrow(s.p,add(s.p,s.v),col,1.5,[5,4],"v");
+    drawShip(s.p,s.heading,col);
+  });
+  if(G.phase==="orders" && !(G.cur===1&&S.mode==="cpu")){
+    const s=G.ships[G.cur], col=TEAMS[G.cur].color;
+    drawRose(s.p,col);
+    if(S.aids){
+      const ang=parseFloat($("angIn").value), T=polar(selMag,isNaN(ang)?0:ang);
+      const tip=add(s.p,s.v), r1=add(tip,T), v1=add(s.v,T);
+      if(selMag>0 && !isNaN(ang)) arrow(tip,r1,GOLD,2.2,null,"T");
+      if(len(v1)>0.3){ arrow(s.p,r1,"#ffffff",2.2,null,"v′"); drawShip(r1,angOf(v1),col,0.35); }
+      if($("fireChk").checked){ const fa=parseFloat($("fireAng").value);
+        if(!isNaN(fa)){ const mv=add(v1,polar(MSPEED,fa));
+          for(let k=1;k<=MLIFE;k++){ const q=add(r1,mul(mv,k)); const [x,y]=W2S(q); ctx.fillStyle=GOLD; ctx.globalAlpha=0.7; ctx.beginPath(); ctx.arc(x,y,2.4,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+          arrow(r1,add(r1,mv),GOLD,1.2,[3,3]); } }
+    }
+  }
+  if(G.over && G.phase==="results"){
+    ctx.save(); ctx.fillStyle="rgba(7,11,24,.55)"; ctx.fillRect(0,CH/2-26,CW,52);
+    ctx.fillStyle=G.over.color; ctx.font=`800 ${CW<520?18:26}px system-ui`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(G.over.msg,CW/2,CH/2); ctx.restore();
+  }
+}
+
+// ---------- wiring ----------
+[...$("magSeg").children].forEach(b=>b.addEventListener("click",()=>setMag(+b.dataset.m)));
+$("fireChk").addEventListener("change",()=>{ $("fireAng").disabled=!$("fireChk").checked; if($("fireChk").checked) $("fireAng").focus(); draw(); });
+["angIn","fireAng"].forEach(id=>$(id).addEventListener("input",draw));
+["angIn","fireAng","px","py"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") lockOrders(); }));
+$("lockBtn").addEventListener("click",()=>lockOrders());
+$("readyBtn").addEventListener("click",()=>startOrders(1));
+$("nextBtn").addEventListener("click",nextTurn);
+$("newBtn").addEventListener("click",newGame);
+$("copyBtn").addEventListener("click",copyLog);
+$("setAids").addEventListener("change",()=>{ S.aids=$("setAids").checked; draw(); });
+$("setMode").addEventListener("change",()=>{ $("setSkill").disabled=$("setMode").value!=="cpu"; });
+window.addEventListener("resize",resize);
+newGame(); resize();
+})();
+</script>
+</body>
+</html>
