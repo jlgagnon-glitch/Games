@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mandelbrot Deep-Zoom Explorer</title>
+<style>
+  :root{--bg:rgba(14,16,24,.82);--line:rgba(255,255,255,.12);--txt:#e8eaf2;--dim:#9aa0b4;--acc:#ffb547}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font:13px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--txt)}
+  canvas{position:fixed;inset:0;width:100vw;height:100vh;touch-action:none;cursor:crosshair;display:block}
+  canvas.drag{cursor:grabbing}
+  #hud{position:fixed;top:10px;left:10px;width:300px;max-width:calc(100vw - 20px);max-height:calc(100vh - 20px);display:flex;flex-direction:column;
+       background:var(--bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.45);user-select:none;-webkit-user-select:none}
+  .bar{display:flex;align-items:center;gap:6px;padding:8px}
+  .zoomread{flex:1;min-width:0;padding-left:4px}
+  #zoomTxt{font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #status{display:block;color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  button{background:rgba(255,255,255,.08);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer;min-width:34px}
+  button:hover{background:rgba(255,255,255,.16)}
+  button.on{background:var(--acc);color:#111;border-color:var(--acc)}
+  .bar button{font-size:16px;padding:4px 0;width:34px;height:32px}
+  .panel{overflow-y:auto;padding:0 12px 12px;border-top:1px solid var(--line)}
+  #hud:not(.open) .panel{display:none}
+  h3{margin:12px 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .row{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .row>label{width:78px;flex:none;color:var(--dim)}
+  .row>select,.row>input[type=range],.row>input[type=text],.row>input[type=number]{flex:1;min-width:0}
+  code{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  select,input[type=text],input[type=number]{background:rgba(0,0,0,.35);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:5px 6px;font:inherit}
+  input[type=text]{font:12px ui-monospace,Menlo,Consolas,monospace}
+  input[type=range]{accent-color:var(--acc)}
+  input[type=checkbox]{accent-color:var(--acc);width:16px;height:16px}
+  .prog{height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin:8px 0 2px}
+  #progBar{height:100%;width:0;background:var(--acc);transition:width .1s}
+  .btns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .btns button{flex:1}
+  .hint{color:var(--dim);font-size:11.5px;margin:10px 0 0}
+  #paletteStrip{height:10px;border-radius:5px;margin:4px 0 2px;border:1px solid var(--line)}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--bg);border:1px solid var(--line);padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
+  #toast.show{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="open">
+  <div class="bar">
+    <button id="toggle" title="Show / hide controls">☰</button>
+    <div class="zoomread"><span id="zoomTxt">1×</span><span id="status">Starting…</span></div>
+    <button id="zin" title="Zoom in (+)">+</button>
+    <button id="zout" title="Zoom out (−)">−</button>
+  </div>
+  <div class="panel">
+    <div class="prog"><div id="progBar"></div></div>
+    <div class="row"><label>Re</label><code id="reTxt"></code></div>
+    <div class="row"><label>Im</label><code id="imTxt"></code></div>
+    <div class="row"><label>Iterations</label><code id="itTxt"></code></div>
+    <div class="row"><label>Precision</label><code id="precTxt"></code></div>
+
+    <h3>Color</h3>
+    <div class="row"><label>Palette</label><select id="palette"></select></div>
+    <div id="paletteStrip"></div>
+    <div class="row"><label>Mapping</label>
+      <select id="mapping">
+        <option value="0">Linear (escape count)</option>
+        <option value="1">Logarithmic</option>
+        <option value="2">Square root</option>
+      </select></div>
+    <div class="row"><label>Band width</label><input type="range" id="density" min="0" max="100" value="42"></div>
+    <div class="row"><label>Hue shift</label><input type="range" id="offset" min="0" max="1000" value="0"></div>
+    <div class="row"><label>Cycle colors</label><input type="checkbox" id="cycle"></div>
+
+    <h3>Rendering</h3>
+    <div class="row"><label>Auto iter.</label><input type="checkbox" id="autoIter" checked></div>
+    <div class="row"><label>Max iter.</label><input type="number" id="iterInput" min="50" step="100" value="1000" disabled></div>
+    <div class="row"><label>Resolution</label>
+      <select id="res">
+        <option value="0.5">Fast (½ device pixels)</option>
+        <option value="1" selected>Native (device pixels)</option>
+        <option value="2">Ultra (2× supersampled)</option>
+      </select></div>
+
+    <h3>Navigate</h3>
+    <div class="row"><label>Jump to</label>
+      <select id="preset"><option value="">Choose a location…</option></select></div>
+    <div class="btns">
+      <button id="reset">Reset view</button>
+      <button id="dive" title="Keep zooming 2× into the center after every frame">Auto-dive</button>
+    </div>
+    <div class="row"><label>Re</label><input type="text" id="goRe" placeholder="-0.743643887037158704752"></div>
+    <div class="row"><label>Im</label><input type="text" id="goIm" placeholder="0.131825904205311970493"></div>
+    <div class="row"><label>Zoom</label><input type="text" id="goZoom" placeholder="1e12"></div>
+    <div class="btns">
+      <button id="goBtn">Go</button>
+      <button id="copyBtn">Copy location</button>
+    </div>
+    <p class="hint">Scroll or pinch to zoom · drag to pan · double-click/tap to zoom in 3× (shift: out) · keys: + − arrows R. Points that escape quickly and slowly get different colors; black points never escape (they're in the set).</p>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Deep zoom via perturbation theory:
+   - The view center (reference point) is held as a BigInt fixed-point
+     number with as many bits as the zoom requires, and its orbit Z_n is
+     iterated exactly in BigInt arithmetic.
+   - Every pixel iterates only its tiny offset dz from that orbit in
+     ordinary doubles:  dz' = 2·Z·dz + dz² + dc,  with "rebasing"
+     (Zhuoran's method) to avoid glitches.
+   - Smooth escape-time:  mu = n + 1 − log2(ln|z|)  colors the pixels.
+   ============================================================ */
+
+const BAIL = 65536;            // |z|² escape radius (R = 256) for smooth coloring
+const MIN_SCALE = 1e-295;      // limit of IEEE double offsets (~10^290× zoom)
+
+// ---------- Web worker (pixel iteration) ----------
+const workerSrc = `
+const BAIL=${BAIL};
+let Z=null,len=0;
+function iter(dcr,dci,maxIter,cr0,ci0,shallow){
+  if(shallow){ // main cardioid & period-2 bulb are inside: skip them
+    const x=cr0+dcr,y=ci0+dci,xm=x-0.25,q=xm*xm+y*y;
+    if(q*(q+xm)<0.25*y*y) return -1;
+    const xp=x+1; if(xp*xp+y*y<0.0625) return -1;
+  }
+  const Zl=Z,last=len-1;
+  let dzr=0,dzi=0,m=0,n=0,pr=0,pi=0,chk=8;
+  while(n<maxIter){
+    const Zr=Zl[2*m],Zi=Zl[2*m+1];
+    const ar=2*Zr+dzr,ai=2*Zi+dzi;
+    const nr=ar*dzr-ai*dzi+dcr;
+    dzi=ar*dzi+ai*dzr+dci; dzr=nr;
+    m++; n++;
+    const zr=Zl[2*m]+dzr,zi=Zl[2*m+1]+dzi,r2=zr*zr+zi*zi;
+    if(r2>BAIL){ const mu=n+1-Math.log2(0.5*Math.log(r2)); return mu>0?mu:0; }
+    if(r2<dzr*dzr+dzi*dzi||m===last){dzr=zr;dzi=zi;m=0;}
+    if(shallow){ // periodicity check: orbit returned to a saved point => interior
+      const er=zr-pr,ei=zi-pi; if(er*er+ei*ei<1e-26) return -1;
+      if(n===chk){pr=zr;pi=zi;chk*=2;}
+    }
+  }
+  return -1;
+}
+onmessage=(e)=>{
+  const d=e.data;
+  if(d.type==='ref'){Z=d.Z;len=d.len;return;}
+  const {y0,y1,W,H,scale,maxIter,block,cr0,ci0,shallow}=d;
+  const out=new Float32Array((y1-y0)*W);
+  for(let y=y0;y<y1;y+=block){
+    const dci=(H*0.5-(y+block*0.5))*scale, ye=Math.min(y+block,y1);
+    for(let x=0;x<W;x+=block){
+      const dcr=(x+block*0.5-W*0.5)*scale;
+      const mu=iter(dcr,dci,maxIter,cr0,ci0,shallow);
+      const xe=Math.min(x+block,W);
+      for(let yy=y;yy<ye;yy++){const o=(yy-y0)*W;for(let xx=x;xx<xe;xx++)out[o+xx]=mu;}
+    }
+  }
+  postMessage({gen:d.gen,y0,y1,block,out},[out.buffer]);
+};`;
+
+// ---------- BigInt fixed-point helpers ----------
+const TWO_M60 = 2 ** -60;
+function fix2d(v, p) { const s = p - 60; return s > 0 ? Number(v >> BigInt(s)) * TWO_M60 : Number(v) * 2 ** -p; }
+function d2fix(v, p) {
+  if (v === 0 || !isFinite(v)) return 0n;
+  const neg = v < 0; v = Math.abs(v);
+  const e = Math.floor(Math.log2(v));
+  let m = v, k = 52 - e;
+  while (k > 1000) { m *= 2 ** 1000; k -= 1000; }
+  while (k < -1000) { m *= 2 ** -1000; k += 1000; }
+  m *= 2 ** k;
+  let b = BigInt(Math.round(m));
+  const sh = p - 52 + e;
+  b = sh >= 0 ? b << BigInt(sh) : b >> BigInt(-sh);
+  return neg ? -b : b;
+}
+function fix2str(v, p, digits) {
+  const neg = v < 0n; if (neg) v = -v;
+  const P = BigInt(p), ip = v >> P, frac = v - (ip << P);
+  const f = (frac * 10n ** BigInt(digits)) >> P;
+  return (neg ? '-' : '') + ip.toString() + '.' + f.toString().padStart(digits, '0');
+}
+function str2fix(s, p) {
+  s = s.trim().toLowerCase().replace(/\s|_/g, '');
+  let exp = 0; const ei = s.indexOf('e');
+  if (ei >= 0) { exp = parseInt(s.slice(ei + 1), 10); if (isNaN(exp)) throw 0; s = s.slice(0, ei); }
+  let neg = false;
+  if (s[0] === '-') { neg = true; s = s.slice(1); } else if (s[0] === '+') s = s.slice(1);
+  const parts = s.split('.'); if (parts.length > 2) throw 0;
+  const a = parts[0], b = parts[1] || '';
+  if (!/^\d*$/.test(a) || !/^\d*$/.test(b) || (a + b) === '') throw 0;
+  const num = BigInt((a + b) || '0'), dec = b.length - exp;
+  const r = dec >= 0 ? (num << BigInt(p)) / 10n ** BigInt(dec) : (num * 10n ** BigInt(-dec)) << BigInt(p);
+  return neg ? -r : r;
+}
+
+// ---------- State ----------
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: false });
+const snap = document.createElement('canvas');
+const sctx = snap.getContext('2d', { alpha: false });
+let W = 0, H = 0, ss = 1, pxPerCss = 1;
+let P = 96, cx = 0n, cy = 0n, scale = 0.004;
+let img, img32, muBuf, rowDone;
+let gen = 0, queue = [], idle = [], workers = [], doneFine = 0, renderStart = 0, rendering = false;
+let snapValid = false, snapView = null, displayedView = null, wantCoarse = true;
+let renderTimer = 0, curMaxIter = 1000, diving = false;
+
+const $ = id => document.getElementById(id);
+const ui = { zoomTxt: $('zoomTxt'), status: $('status'), re: $('reTxt'), im: $('imTxt'), it: $('itTxt'), prec: $('precTxt'), prog: $('progBar') };
+
+function setPrecision() {
+  const need = Math.max(96, Math.ceil(-Math.log2(scale)) + 96);
+  if (need > P) { const s = BigInt(need - P); cx <<= s; cy <<= s; P = need; }
+  else if (need < P - 128) { const s = BigInt(P - need); cx >>= s; cy >>= s; P = need; }
+}
+function zoomLevel() { return 4 / (W * scale); }
+function curView() { return { cx, cy, P, scale }; }
+
+// ---------- Palettes ----------
+const PALETTES = {
+  'Classic (blue / gold)': [[0,'#000764'],[.16,'#206bcb'],[.42,'#edffff'],[.6425,'#ffaa00'],[.8575,'#000200'],[1,'#000764']],
+  'Fire': [[0,'#000000'],[.2,'#7a0403'],[.4,'#e8410b'],[.6,'#fca50a'],[.8,'#fcffa4'],[1,'#000000']],
+  'Ocean': [[0,'#03045e'],[.25,'#0077b6'],[.5,'#00b4d8'],[.68,'#caf0f8'],[.85,'#48cae4'],[1,'#03045e']],
+  'Electric': [[0,'#0b0221'],[.2,'#5b1a8c'],[.4,'#d62ad0'],[.58,'#ffffff'],[.75,'#29e0ff'],[1,'#0b0221']],
+  'Aurora': [[0,'#001219'],[.18,'#005f73'],[.36,'#94d2bd'],[.52,'#e9d8a6'],[.68,'#ee9b00'],[.84,'#ae2012'],[1,'#001219']],
+  'Rainbow': 'hsv',
+  'Grayscale': [[0,'#000000'],[.5,'#ffffff'],[1,'#000000']],
+};
+const LUTN = 2048, LUT = new Uint32Array(LUTN), INTERIOR = 0xff000000;
+function hex(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function buildLUT(name) {
+  const pal = PALETTES[name], rgbs = [];
+  for (let i = 0; i < LUTN; i++) {
+    const t = i / LUTN; let r, g, b;
+    if (pal === 'hsv') {
+      const h = t * 6, k = n => { const x = (n + h) % 6; return 1 - Math.max(0, Math.min(x, 4 - x, 1)); };
+      r = 255 * k(5); g = 255 * k(3); b = 255 * k(1);
+    } else {
+      let j = 0; while (j < pal.length - 2 && t > pal[j + 1][0]) j++;
+      const [t0, c0] = pal[j], [t1, c1] = pal[j + 1];
+      let u = (t - t0) / (t1 - t0); u = u * u * (3 - 2 * u);
+      const a = hex(c0), bb = hex(c1);
+      r = a[0] + (bb[0] - a[0]) * u; g = a[1] + (bb[1] - a[1]) * u; b = a[2] + (bb[2] - a[2]) * u;
+    }
+    LUT[i] = 0xff000000 | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r);
+    if (i % 64 === 0) rgbs.push(`rgb(${r|0},${g|0},${b|0})`);
+  }
+  $('paletteStrip').style.background = `linear-gradient(90deg,${rgbs.join(',')})`;
+}
+
+// ---------- Coloring ----------
+let colorPeriod = 48, colorOffset = 0, mapMode = 0;
+function colorRows(y0, y1) {
+  const per = 1 / colorPeriod, off = colorOffset, mode = mapMode, lut = LUT, N = LUTN, mu = muBuf, out = img32;
+  for (let i = y0 * W, e = y1 * W; i < e; i++) {
+    const m = mu[i];
+    if (m < 0) { out[i] = INTERIOR; continue; }
+    let t = mode === 0 ? m : mode === 1 ? 24 * Math.log2(m + 1) : 6 * Math.sqrt(m);
+    t = t * per + off; t -= Math.floor(t);
+    out[i] = lut[(t * N) | 0];
+  }
+}
+function recolorDone() {
+  let y = 0;
+  while (y < H) {
+    if (!rowDone[y]) { y++; continue; }
+    let e = y; while (e < H && rowDone[e]) e++;
+    colorRows(y, e); ctx.putImageData(img, 0, 0, 0, y, W, e - y); y = e;
+  }
+}
+
+// ---------- Reference orbit (exact BigInt) ----------
+function computeRef(maxIter) {
+  const Pb = BigInt(P), P1 = BigInt(P - 1);
+  const Z = new Float64Array(2 * (maxIter + 2));
+  let x = 0n, y = 0n, len = 1;
+  for (let i = 0; i <= maxIter; i++) {
+    const nx = ((x * x - y * y) >> Pb) + cx;
+    y = ((x * y) >> P1) + cy; x = nx;
+    const xr = fix2d(x, P), yr = fix2d(y, P);
+    Z[2 * len] = xr; Z[2 * len + 1] = yr; len++;
+    if (xr * xr + yr * yr > BAIL) break;
+  }
+  return { Z: Z.slice(0, 2 * len), len };
+}
+function autoIter() {
+  const L = Math.max(0, Math.log10(zoomLevel()));
+  return Math.round(250 + 120 * L + 2 * L * L);
+}
+
+// ---------- Rendering pipeline ----------
+function cancelRender() { gen++; queue.length = 0; rendering = false; }
+function startRender() {
+  clearTimeout(renderTimer);
+  cancelRender();
+  const myGen = gen;
+  snapValid = false; displayedView = curView();
+  rowDone.fill(0); doneFine = 0; renderStart = performance.now(); rendering = true;
+  ui.status.textContent = 'Rendering…';
+  curMaxIter = $('autoIter').checked ? autoIter() : Math.max(50, parseInt($('iterInput').value, 10) || 1000);
+  if ($('autoIter').checked) $('iterInput').value = curMaxIter;
+  const ref = computeRef(curMaxIter);
+  for (const w of workers) w.postMessage({ type: 'ref', Z: ref.Z, len: ref.len });
+  const base = { type: 'job', gen: myGen, W, H, scale, maxIter: curMaxIter, cr0: fix2d(cx, P), ci0: fix2d(cy, P), shallow: scale > 1e-11 };
+  const bandsFrom = (h) => { const arr = []; for (let y = 0; y < H; y += h) arr.push(y); const mid = H / 2; arr.sort((a, b) => Math.abs(a + h / 2 - mid) - Math.abs(b + h / 2 - mid)); return arr; };
+  if (wantCoarse) for (const y of bandsFrom(32)) queue.push({ ...base, y0: y, y1: Math.min(y + 32, H), block: 4 });
+  for (const y of bandsFrom(8)) queue.push({ ...base, y0: y, y1: Math.min(y + 8, H), block: 1 });
+  wantCoarse = false;
+  updateReadout();
+  pump();
+}
+function pump() { while (idle.length && queue.length) idle.pop().postMessage(queue.shift()); }
+function onResult(d) {
+  const { y0, y1, block, out } = d;
+  if (block === 1) {
+    muBuf.set(out, y0 * W);
+    for (let y = y0; y < y1; y++) rowDone[y] = 1;
+    colorRows(y0, y1); ctx.putImageData(img, 0, 0, 0, y0, W, y1 - y0);
+    doneFine += y1 - y0;
+  } else {
+    for (let y = y0; y < y1; y++) if (!rowDone[y]) muBuf.set(out.subarray((y - y0) * W, (y - y0 + 1) * W), y * W);
+    let y = y0;
+    while (y < y1) { if (rowDone[y]) { y++; continue; } let e = y; while (e < y1 && !rowDone[e]) e++; colorRows(y, e); ctx.putImageData(img, 0, 0, 0, y, W, e - y); y = e; }
+  }
+  const pct = doneFine / H;
+  ui.prog.style.width = (pct * 100).toFixed(1) + '%';
+  if (doneFine >= H) {
+    rendering = false;
+    const secs = (performance.now() - renderStart) / 1000;
+    ui.status.textContent = `Rendered ${W}×${H} in ${secs.toFixed(secs < 10 ? 2 : 1)} s`;
+    if (diving) setTimeout(() => { if (diving && !rendering) zoomAtCss(innerWidth / 2, innerHeight / 2, 0.5); }, 120);
+  } else {
+    ui.status.textContent = `Rendering… ${(pct * 100).toFixed(0)}%`;
+  }
+}
+function scheduleRender(delay = 90) { clearTimeout(renderTimer); renderTimer = setTimeout(startRender, delay); }
+
+// ---------- Preview: re-project last frame while the new one computes ----------
+function viewChanged() {
+  cancelRender();
+  if (!snapValid && displayedView) { sctx.drawImage(canvas, 0, 0); snapView = displayedView; snapValid = true; }
+  if (snapValid) {
+    const v = snapView, ratio = v.scale / scale, sh = P - v.P;
+    const ocx = sh >= 0 ? v.cx << BigInt(sh) : v.cx >> BigInt(-sh);
+    const ocy = sh >= 0 ? v.cy << BigInt(sh) : v.cy >> BigInt(-sh);
+    const offX = fix2d(ocx - cx, P) / scale, offY = -fix2d(ocy - cy, P) / scale;
+    const dw = W * ratio, dh = H * ratio;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    if (isFinite(dw) && dw > 0.5) ctx.drawImage(snap, W / 2 + offX - dw / 2, H / 2 + offY - dh / 2, dw, dh);
+    if (ratio < 0.9) wantCoarse = true;
+  }
+  ui.prog.style.width = '0%';
+  updateReadout();
+  scheduleRender();
+}
+
+// ---------- Navigation ----------
+let toastTimer = 0;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200); }
+function zoomAtCss(x, y, f) {
+  if (scale * f < MIN_SCALE) { f = MIN_SCALE / scale; if (f > 0.999) { toast('Maximum depth reached (≈10^290× — the limit of double-precision pixel offsets)'); diving = false; $('dive').classList.remove('on'); return; } }
+  const ox = (x * pxPerCss - W / 2) * scale, oy = (H / 2 - y * pxPerCss) * scale;
+  cx += d2fix(ox * (1 - f), P); cy += d2fix(oy * (1 - f), P);
+  scale *= f; setPrecision(); viewChanged();
+}
+function panCss(dx, dy) {
+  cx -= d2fix(dx * pxPerCss * scale, P); cy += d2fix(dy * pxPerCss * scale, P); viewChanged();
+}
+function fitScale() { return Math.max(3.4 / W, 2.7 / H); }
+function resetView() { scale = fitScale(); P = 96; setPrecision(); cx = d2fix(-0.65, P); cy = 0n; wantCoarse = true; snapValid = false; displayedView = null; startRender(); }
+function goTo(reStr, imStr, zoom) {
+  if (!(zoom > 0)) zoom = 1;
+  const ns = 4 / (W * zoom);
+  if (ns < MIN_SCALE) { toast('Zoom too deep (max ≈ 1e290)'); return false; }
+  const oldScale = scale; scale = ns;
+  const need = Math.max(96, Math.ceil(-Math.log2(scale)) + 96);
+  try { const nx = str2fix(reStr, need), ny = str2fix(imStr, need); cx = nx; cy = ny; P = need; }
+  catch (e) { scale = oldScale; toast('Could not read those coordinates'); return false; }
+  wantCoarse = true; snapValid = false; displayedView = null; startRender(); return true;
+}
+
+// ---------- Readout ----------
+function fmtZoom(z) {
+  if (z < 1e5) return (z < 10 ? z.toFixed(2) : Math.round(z).toLocaleString()) + '×';
+  const e = Math.floor(Math.log10(z)), m = z / 10 ** e;
+  return `${m.toFixed(2)} × 10<sup>${e}</sup>`;
+}
+function coordDigits() { return Math.max(6, Math.ceil(-Math.log10(scale)) + 2); }
+function updateReadout() {
+  ui.zoomTxt.innerHTML = fmtZoom(zoomLevel());
+  const d = coordDigits();
+  ui.re.textContent = fix2str(cx, P, d); ui.im.textContent = fix2str(cy, P, d);
+  ui.re.title = ui.re.textContent; ui.im.title = ui.im.textContent;
+  ui.it.textContent = curMaxIter.toLocaleString();
+  ui.prec.textContent = `${P} bits (~${Math.round(P * 0.30103)} digits)`;
+}
+
+// ---------- Canvas sizing ----------
+function resize(keepWorld = true) {
+  const dpr = window.devicePixelRatio || 1;
+  let k = dpr * ss;
+  const cw = innerWidth, ch = innerHeight, cap = 24e6;
+  if (cw * ch * k * k > cap) k = Math.sqrt(cap / (cw * ch));
+  const nW = Math.max(1, Math.round(cw * k)), nH = Math.max(1, Math.round(ch * k));
+  if (keepWorld && W) scale *= W / nW;
+  W = nW; H = nH; pxPerCss = W / cw;
+  canvas.width = W; canvas.height = H; snap.width = W; snap.height = H;
+  img = ctx.createImageData(W, H); img32 = new Uint32Array(img.data.buffer);
+  muBuf = new Float32Array(W * H); rowDone = new Uint8Array(H);
+  snapValid = false; displayedView = null; wantCoarse = true;
+}
+
+// ---------- Input ----------
+const pointers = new Map(); let gest = null, lastTap = 0, moved = false;
+function gestState() {
+  const p = [...pointers.values()];
+  if (p.length === 1) return { n: 1, x: p[0].x, y: p[0].y };
+  const x = (p[0].x + p[1].x) / 2, y = (p[0].y + p[1].y) / 2, d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  return { n: 2, x, y, d };
+}
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  gest = gestState(); moved = false; canvas.classList.add('drag');
+});
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const g = gestState();
+  if (!gest || g.n !== gest.n) { gest = g; return; }
+  const dx = g.x - gest.x, dy = g.y - gest.y;
+  if (Math.abs(dx) + Math.abs(dy) > 2 || g.n === 2) moved = true;
+  if (!moved) return;
+  if (g.n === 2 && gest.d > 0 && g.d > 0) {
+    const ox = g.x * pxPerCss - W / 2, oy = H / 2 - g.y * pxPerCss;
+    const ogx = gest.x * pxPerCss - W / 2, ogy = H / 2 - gest.y * pxPerCss;
+    let f = gest.d / g.d; if (scale * f < MIN_SCALE) f = MIN_SCALE / scale;
+    // world point under old midpoint stays under new midpoint
+    cx += d2fix(ogx * scale - ox * scale * f, P); cy += d2fix(ogy * scale - oy * scale * f, P);
+    scale *= f; setPrecision(); viewChanged();
+  } else if (g.n === 1) panCss(dx, dy);
+  gest = g;
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) {
+    canvas.classList.remove('drag');
+    if (!moved && e.pointerType !== 'mouse') {           // double-tap to zoom
+      const now = performance.now();
+      if (now - lastTap < 320) { zoomAtCss(e.clientX, e.clientY, 1 / 3); lastTap = 0; } else lastTap = now;
+    }
+  }
+  gest = pointers.size ? gestState() : null;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('dblclick', e => zoomAtCss(e.clientX, e.clientY, e.shiftKey ? 3 : 1 / 3));
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  let dy = e.deltaY; if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
+  zoomAtCss(e.clientX, e.clientY, Math.exp(Math.max(-300, Math.min(300, dy)) * 0.0022));
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const cxs = innerWidth / 2, cys = innerHeight / 2, step = Math.min(innerWidth, innerHeight) * 0.15;
+  if (e.key === '+' || e.key === '=') zoomAtCss(cxs, cys, 0.5);
+  else if (e.key === '-' || e.key === '_') zoomAtCss(cxs, cys, 2);
+  else if (e.key === 'ArrowLeft') panCss(step, 0);
+  else if (e.key === 'ArrowRight') panCss(-step, 0);
+  else if (e.key === 'ArrowUp') panCss(0, step);
+  else if (e.key === 'ArrowDown') panCss(0, -step);
+  else if (e.key === 'r' || e.key === 'R') resetView();
+  else return;
+  e.preventDefault();
+});
+let resizeTimer = 0;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { cancelRender(); resize(true); setPrecision(); startRender(); }, 150); });
+
+// ---------- Controls ----------
+const palSel = $('palette');
+for (const name of Object.keys(PALETTES)) palSel.add(new Option(name, name));
+palSel.onchange = () => { buildLUT(palSel.value); recolorDone(); };
+$('mapping').onchange = e => { mapMode = +e.target.value; recolorDone(); };
+const setPeriod = () => { colorPeriod = 2 ** (2 + $('density').value / 100 * 9); };
+$('density').oninput = () => { setPeriod(); recolorDone(); };
+$('offset').oninput = e => { colorOffset = e.target.value / 1000; recolorDone(); };
+let cycling = false, lastT = 0;
+$('cycle').onchange = e => { cycling = e.target.checked; if (cycling) { lastT = performance.now(); requestAnimationFrame(cycleFrame); } };
+function cycleFrame(t) {
+  if (!cycling) return;
+  colorOffset = (colorOffset + (t - lastT) * 0.00006) % 1; lastT = t;
+  $('offset').value = Math.round(colorOffset * 1000);
+  recolorDone(); requestAnimationFrame(cycleFrame);
+}
+$('autoIter').onchange = e => { $('iterInput').disabled = e.target.checked; startRender(); };
+$('iterInput').onchange = () => { if (!$('autoIter').checked) startRender(); };
+$('res').onchange = e => { ss = +e.target.value; cancelRender(); resize(true); setPrecision(); startRender(); };
+$('toggle').onclick = () => $('hud').classList.toggle('open');
+$('zin').onclick = () => zoomAtCss(innerWidth / 2, innerHeight / 2, 0.5);
+$('zout').onclick = () => zoomAtCss(innerWidth / 2, innerHeight / 2, 2);
+$('reset').onclick = resetView;
+$('dive').onclick = () => { diving = !diving; $('dive').classList.toggle('on', diving); if (diving && !rendering) zoomAtCss(innerWidth / 2, innerHeight / 2, 0.5); };
+
+const PRESETS = [
+  ['Seahorse Valley', '-0.743643887037158704752191506114774', '0.131825904205311970493132056385139', 300],
+  ['Seahorse spiral (10^10)', '-0.743643887037158704752191506114774', '0.131825904205311970493132056385139', 1e10],
+  ['Elephant Valley', '0.3', '0.02', 40],
+  ['Period-3 mini-Mandelbrot', '-1.754877666246692760049508896358528', '0', 70],
+  ['Dendrite at c = i (10^150 deep!)', '0', '1', 1e150],
+  ['Satellite in Seahorse Valley', '-0.7746806106269039', '-0.1374168856037867', 2e6],
+];
+const preSel = $('preset');
+PRESETS.forEach((p, i) => preSel.add(new Option(p[0], i)));
+preSel.onchange = () => { const p = PRESETS[+preSel.value]; if (p) { goTo(p[1], p[2], p[3]); diving = false; $('dive').classList.remove('on'); } preSel.value = ''; };
+$('goBtn').onclick = () => {
+  const z = parseFloat($('goZoom').value || '1');
+  goTo($('goRe').value || '0', $('goIm').value || '0', z);
+};
+$('copyBtn').onclick = async () => {
+  const d = coordDigits() + 2, re = fix2str(cx, P, d), im = fix2str(cy, P, d), z = zoomLevel().toExponential(6);
+  $('goRe').value = re; $('goIm').value = im; $('goZoom').value = z;
+  try { await navigator.clipboard.writeText(`re = ${re}\nim = ${im}\nzoom = ${z}`); toast('Location copied (also filled into the fields above)'); }
+  catch { toast('Location filled into the Go-to fields'); }
+};
+
+// ---------- Boot ----------
+const nW = Math.min(16, Math.max(2, navigator.hardwareConcurrency || 4));
+const blobURL = URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }));
+for (let i = 0; i < nW; i++) {
+  const w = new Worker(blobURL);
+  w.onmessage = e => { idle.push(w); if (e.data.gen === gen) onResult(e.data); pump(); };
+  workers.push(w); idle.push(w);
+}
+if (innerWidth < 640) $('hud').classList.remove('open');
+buildLUT(palSel.value); setPeriod();
+resize(false);
+resetView();
+</script>
+</body>
+</html>
