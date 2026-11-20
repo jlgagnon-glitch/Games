@@ -15,5 +15,6 @@ That link opens the menu with every game. To play one directly:
 | [Ohm Grid](https://jlgagnon-glitch.github.io/Games/ohm-grid.html) | A resistor tile game. Build circuits and chase secret goals. |
 | [Vector Duel](https://jlgagnon-glitch.github.io/Games/vector-duel.html) | A space battle played with vector addition. |
 | [Beamline](https://jlgagnon-glitch.github.io/Games/beamline.html) | A logic puzzle. Use mirrors, splitters and color filters to light every crystal and miss every bomb. |
+| [Mirror Twins](https://jlgagnon-glitch.github.io/Games/mirror-twins.html) | A logic puzzle. One set of controls moves two twins in mirrored rooms. Get both onto their goals at once. |
 
 On an iPad, tap Share → Add to Home Screen to keep a game handy.
